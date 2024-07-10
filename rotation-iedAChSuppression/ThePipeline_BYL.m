@@ -20,19 +20,22 @@
 %% Start Up
 clear all; close all;
 
-% Add BUZCODE path on your system
-addpath(genpath('C:\Users\brian\buzcode')); 
+% Add BUZCODE and personal code paths on your system
+addpath(genpath('C:\Users\brian\buzcode'));
+addpath(genpath('C:\Users\brian\BuzlabPhD\rotation-iedAChSuppression'));
 
-% Add path to directory containing all ACh## sub-directories.
+% Add path to parent directory containing all ACh## sub-directories.
 rootpath = '\\research-cifs.nyumc.org\research\buzsakilab\Buzsakilabspace\LabShare\AnnaMaslarova\YZ';
 % rootpath = 'E:\BuzLabTemporaryCopies';
 
+% Find mouse/session children directories
 sessions = dir([rootpath,'/**/ACh*/*Session*']);
 dirIDX = find([sessions.isdir]);
 sessions = sessions(dirIDX);
 dirIDX = ~contains({sessions.name},'for upload') & ~contains({sessions.name},"don't use");
 sessions = sessions(dirIDX);
 
+% Switch to parent directory
 cd(rootpath)
 
 %% Manual Variables
@@ -106,6 +109,7 @@ ACh03 = 10:14;
 ACh06 = [15,17];
 
 %% Packet Identification
+tic;
 % Action Variables
 plotting            = false;
 loadData            = true;
@@ -118,13 +122,11 @@ sessionsToRun       = ACh01; % Check 'Mouse Indices' in 'Manual Variables'
 % (Re)Initiate Data Variables
 nREMrelevIED = {};
 nREMrelevRip = {};
-nrem.lfp = {};
-nrem.ied = {};
-relevantACHI = {};
-relevantACHR = {};
+AChrelevIED = {};
+AChrelevRip = {};
+clear ach nrem;
 
-
-for sesh = sessionsToRun
+for sesh = 1:2
     if manualCheck
         livePlot = true;
     else
@@ -177,9 +179,9 @@ for sesh = sessionsToRun
     end
     
     if plotting
-        f4 = figure(4); clf; hold on;
-        f4.Units = 'no rmalized';
-        f4.Position = [0.33 0.53 0.4 0.3];
+        f1 = figure(1); clf; hold on;
+        f1.Units = 'no rmalized';
+        f1.Position = [0.33 0.53 0.4 0.3];
         
         plot(arousals.times,arousals.movNREM,'k');
         xline(arousals.timestamps(:,1),'b')
@@ -200,9 +202,9 @@ for sesh = sessionsToRun
     nREMnoArousals(idx_) = 0;
     
     if plotting
-        f5 = figure(5); clf; hold on;
-        f5.Units = 'normalized';
-        f5.Position = [0.36 0.56 0.4 0.3];
+        f2 = figure(2); clf; hold on;
+        f2.Units = 'normalized';
+        f2.Position = [0.36 0.56 0.4 0.3];
         
         plot(nREMnoArousals);
         plot(statesIdx.states,'r');xlim([0 inf]);
@@ -216,19 +218,18 @@ for sesh = sessionsToRun
     % Extract Session Data into Cell Array
     nREMpackets = bz_IDXtoINT(nREMnoArousals);
 
-    % ACh Packet Peaks
+    % Detect ACh Packet Peaks and remove overdetected peaks.
     [pks,locs] = findpeaks(AChAnalyzis.AChTrace, ...
         'MinPeakProminence',5e-3, ...
         'MinPeakWidth',50, ...
         'WidthReference','halfprom');
-
     pks(badPeaks{sesh}) = [];
     locs(badPeaks{sesh}) = [];
     
     if livePlot
         windows = 1:250:ceil(max(AChAnalyzis.time)/1000)*1000;
         win = 1;
-        fig = figure(10); clf; hold on;
+        fig = figure(3); clf; hold on;
         fig.Units = 'normalized';
         fig.Position = [0 0.5 1 0.415];
         colormap(fig,'hot');
@@ -242,7 +243,7 @@ for sesh = sessionsToRun
         end
 
         while livePlot
-            % Window different indices for live plotting.
+            % Window different indices for improved latency on live plotting
             locIdx = transpose(AChAnalyzis.time(locs) >= windows(win) & AChAnalyzis.time(locs) <= windows(win+1));
             achIdx = AChAnalyzis.time >= windows(win) & AChAnalyzis.time <= windows(win+1);
             iedIdx = IED.timestamps(:,1) >= windows(win) & IED.timestamps(:,1) <= windows(win+1);
@@ -269,7 +270,7 @@ for sesh = sessionsToRun
             clf; hold on;
             title('Acetylcholine Peaks');
             ylim([-0.15 0.15])
-            xlim([windows(win) windows(win+1)]);
+            xlim([windows(win) windows(win+1)]); % UI for plot navigation
 
             plot(AChAnalyzis.time(achIdx), AChAnalyzis.AChTrace(achIdx),'Color',[0.5 0.5 0.5]);
             plot(AChAnalyzis.time(locs(locIdx)),pks(locIdx),'om','MarkerSize',7)
@@ -353,9 +354,8 @@ for sesh = sessionsToRun
     end
 
     %%%%%%% SAVE DATA %%%%%%%
-    if saveNREM
-        %%%%%%% NREM Packets IED & Ripples
-        % nREM packets with IEDs
+    if saveNREM % TO-DO: Implentation of tables
+        % NREM Packets IED & Ripples
         %   extract for:    IEDs (time, size)
         %                   Ripples (time, size)
         %                   LFP (time, sw, th)
@@ -365,35 +365,35 @@ for sesh = sessionsToRun
         nREMsI = nREMsI(nREMsI ~= 0);
         
         nREMrelevIED{sesh} = nREMpackets.state1(nREMsI,:);
-            
+        nrem.ied.packets{sesh,1} = nREMrelevIED{sesh};
+        
         [~, intervalLFP, ~] = InIntervals(SleepScoreLFP.t,nREMrelevIED{sesh});
         [~, intervalACh, ~] = InIntervals(AChAnalyzis.time,nREMrelevIED{sesh});
         [~, intervalIED, ~] = InIntervals(IED.timestamps(:,1),nREMrelevIED{sesh});
         if isfile(rippleFile)
             [~, intervalRip, ~] = InIntervals(ripples.peaks,nREMrelevIED{sesh});
         end
-        for j = 1:size(nREMrelevIED{sesh},1)
-            lfpIdx = intervalLFP==j;
-            iedIdx = intervalIED==j;
-            achIdx = intervalACh==j;
-            nrem.ied.lfp{sesh,1}{j,1} = SleepScoreLFP.t(lfpIdx);
-            nrem.ied.lfp{sesh,1}{j,2} = double(SleepScoreLFP.swLFP(lfpIdx));
-            nrem.ied.lfp{sesh,1}{j,3} = double(SleepScoreLFP.thLFP(lfpIdx));
-            nrem.ied.ach{sesh,1}{j,1} = AChAnalyzis.time(achIdx);
-            nrem.ied.ach{sesh,1}{j,2} = AChAnalyzis.AChTrace(achIdx);
-            nrem.ied.ied{sesh,1}{j,1} = IED.timestamps(iedIdx,1);
-            nrem.ied.ied{sesh,1}{j,2} = IED.rippleStats.data.peakAmplitude(iedIdx);
+        for pack = 1:size(nREMrelevIED{sesh},1)
+            lfpIdx = intervalLFP==pack;
+            iedIdx = intervalIED==pack;
+            achIdx = intervalACh==pack;
+            nrem.ied.lfp{sesh,1}{pack,1} = SleepScoreLFP.t(lfpIdx);
+            nrem.ied.lfp{sesh,1}{pack,2} = double(SleepScoreLFP.swLFP(lfpIdx));
+            nrem.ied.lfp{sesh,1}{pack,3} = double(SleepScoreLFP.thLFP(lfpIdx));
+            nrem.ied.ach{sesh,1}{pack,1} = AChAnalyzis.time(achIdx);
+            nrem.ied.ach{sesh,1}{pack,2} = AChAnalyzis.AChTrace(achIdx);
+            nrem.ied.ied{sesh,1}{pack,1} = IED.timestamps(iedIdx,1);
+            nrem.ied.ied{sesh,1}{pack,2} = IED.rippleStats.data.peakAmplitude(iedIdx);
             if isfile(rippleFile)
-                ripIdx = intervalRip==j;
-                nrem.ied.rip{sesh,1}{j,1} = ripples.peaks(ripIdx);
-                nrem.ied.rip{sesh,1}{j,2} = ripples.peakNormedPower(ripIdx);
+                ripIdx = intervalRip==pack;
+                nrem.ied.rip{sesh,1}{pack,1} = ripples.peaks(ripIdx);
+                nrem.ied.rip{sesh,1}{pack,2} = ripples.peakNormedPower(ripIdx);
             end
         end   
     
         if isfile(rippleFile)
-            %%%%%%% NREM Packets Ripples Only
-            % nREM packets with Ripples
-            %   extract for:    IEDs (time, size)
+            % NREM Packets Ripples Only
+            %   extract for:    
             %                   Ripples (time, size)
             %                   LFP (time, sw, th)
             %                   ACh (time, trace)    [~, intervalRip, ~] = InIntervals(ripples.peaks(:,1),nREMpackets.state1);
@@ -404,108 +404,286 @@ for sesh = sessionsToRun
             nREMsR = nREMsR(~ismember(nREMsR,nREMsI));
         
             nREMrelevRip{sesh} = nREMpackets.state1(nREMsR,:);
-        
-        
+            nrem.no_ied.packets{sesh,1} = nREMrelevRip{sesh};
+
             [~, intervalRip, ~] = InIntervals(ripples.peaks,nREMrelevRip{sesh});
             [~, intervalLFP, ~] = InIntervals(SleepScoreLFP.t,nREMrelevRip{sesh});
             [~, intervalACh, ~] = InIntervals(AChAnalyzis.time,nREMrelevRip{sesh});        
-            for j = 1:size(nREMrelevRip{sesh},1)
-                lfpIdx = intervalLFP==j;
-                iedIdx = intervalIED==j;
-                achIdx = intervalACh==j;
-                ripIdx = intervalRip==j;
-                nrem.no_ied.lfp{sesh,2}{j,1} = SleepScoreLFP.t(lfpIdx);
-                nrem.no_ied.lfp{sesh,2}{j,2} = double(SleepScoreLFP.swLFP(lfpIdx));
-                nrem.no_ied.lfp{sesh,2}{j,3} = double(SleepScoreLFP.thLFP(lfpIdx));
-                nrem.no_ied.ach{sesh,2}{j,1} = AChAnalyzis.time(achIdx);
-                nrem.no_ied.ach{sesh,2}{j,2} = AChAnalyzis.AChTrace(achIdx);
-                nrem.no_ied.rip{sesh,2}{j,1} = ripples.peaks(ripIdx);
-                nrem.no_ied.rip{sesh,2}{j,2} = ripples.peakNormedPower(ripIdx);
+            for pack = 1:size(nREMrelevRip{sesh},1)
+                lfpIdx = intervalLFP==pack;
+                iedIdx = intervalIED==pack;
+                achIdx = intervalACh==pack;
+                ripIdx = intervalRip==pack;
+                nrem.no_ied.lfp{sesh,1}{pack,1} = SleepScoreLFP.t(lfpIdx);
+                nrem.no_ied.lfp{sesh,1}{pack,2} = double(SleepScoreLFP.swLFP(lfpIdx));
+                nrem.no_ied.lfp{sesh,1}{pack,3} = double(SleepScoreLFP.thLFP(lfpIdx));
+                nrem.no_ied.ach{sesh,1}{pack,1} = AChAnalyzis.time(achIdx);
+                nrem.no_ied.ach{sesh,1}{pack,2} = AChAnalyzis.AChTrace(achIdx);
+                nrem.no_ied.rip{sesh,1}{pack,1} = ripples.peaks(ripIdx);
+                nrem.no_ied.rip{sesh,1}{pack,2} = ripples.peakNormedPower(ripIdx);
             end   
         end
     end
 
-
-    
-    %%%%%%% Acetylcholine Packets IED
-    % ACh packets with IEDs
-    %   extract for:    IEDs (time, size)
-    %                   Ripples (time, size)
-    %                   LFP (time, sw, th)
-    %                   ACh (time, trace)
-    [~, intD, ~] = InIntervals(IED.timestamps(:,1),AChAnalyzis.time(p2p));
-    
-    relevantP2PI = unique(intD); % Isoate the Acetylcholine P2P packets that have IEDs.
-    relevantP2PI = relevantP2PI(relevantP2PI ~= 0);
-    
-    achrelevIED{sesh} = AChAnalyzis.time(p2p(relevantP2PI,:));
-    
-    [~, intervalRip, ~] = InIntervals(ripples.peaks,achrelevIED{sesh});
-    [~, intervalLFP, ~] = InIntervals(SleepScoreLFP.t,achrelevIED{sesh});
-    [~, intervalACh, ~] = InIntervals(AChAnalyzis.time,achrelevIED{sesh});
-    [~, intervalIED, ~] = InIntervals(IED.timestamps(:,1),achrelevIED{sesh});
-
-    for j = 1:size(achrelevIED{sesh},1)
-        lfpIdx = intervalLFP==j;
-        iedIdx = intervalIED==j;
-        achIdx = intervalACh==j;
-        ripIdx = intervalRip==j;
-        ach.lfp{sesh,1}{j,1} = SleepScoreLFP.t(lfpIdx);
-        ach.lfp{sesh,1}{j,2} = double(SleepScoreLFP.swLFP(lfpIdx));
-        ach.lfp{sesh,1}{j,3} = double(SleepScoreLFP.thLFP(lfpIdx));
-        ach.ied{sesh,1}{j,1} = IED.timestamps(iedIdx,1);
-        ach.ied{sesh,1}{j,2} = IED.rippleStats.data.peakAmplitude(iedIdx);
-        ach.ied{sesh,1}{j,3} = IED.rippleStats.data.peakFrequency(iedIdx);
-        ach.ied{sesh,1}{j,4} = IED.rippleStats.data.duration(iedIdx);
-        ach.ach{sesh,1}{j,1} = AChAnalyzis.time(achIdx);
-        ach.ach{sesh,1}{j,2} = AChAnalyzis.AChTrace(achIdx);
-        ach.rip{sesh,1}{j,1} = ripples.peaks(ripIdx);
-        ach.rip{sesh,1}{j,2} = ripples.peakNormedPower(ripIdx);
+    if saveACH
+        % Acetylcholine Packets IED & Ripples
+        %   extract for:    IEDs (time, pkAmp, pkFreq, dur)
+        %                   Ripples (time, size)
+        %                   LFP (time, sw, th)
+        %                   ACh (time, trace)
+        [~, intD, ~] = InIntervals(IED.timestamps(:,1),AChAnalyzis.time(p2p));
         
-    end 
-    
-    
-    % %{
-    %%%%%%% Acetycholine Packets RIPPLES 
-    % ACh packets with IEDs
-    %   extract for:    IEDs (time, size)
-    %                   Ripples (time, size)
-    %                   LFP (time, sw, th)
-    %                   ACh (time, trace)
-    [~, intR, ~] = InIntervals(ripples.peaks,AChAnalyzis.time(p2p));
-    
-    relevantP2PR = unique(intR); % Isoate the Acetylcholine P2P packets that have ripples.
-    relevantP2PR = relevantP2PR(relevantP2PR ~= 0);
-    relevantP2PR = relevantP2PR(~ismember(relevantP2PR,relevantP2PI));
+        relevantP2PI = unique(intD); % Isoate the Acetylcholine P2P packets that have IEDs.
+        relevantP2PI = relevantP2PI(relevantP2PI ~= 0);
         
-    achrelevRip{sesh} = AChAnalyzis.time(p2p(relevantP2PR,:));
+        AChrelevIED = AChAnalyzis.time(p2p(relevantP2PI,:));
+        ach.ied.packets{sesh,1} = AChrelevIED;
 
-    
-    [~, intervalRip, ~] = InIntervals(ripples.peaks,achrelevRip{sesh});
-    [~, intervalLFP, ~] = InIntervals(SleepScoreLFP.t,achrelevRip{sesh});
-    [~, intervalACh, ~] = InIntervals(AChAnalyzis.time,achrelevRip{sesh});
-    [~, intervalIED, ~] = InIntervals(IED.timestamps(:,1),achrelevRip{sesh});
+        [~, intervalLFP, ~] = InIntervals(SleepScoreLFP.t,AChrelevIED);
+        [~, intervalACh, ~] = InIntervals(AChAnalyzis.time,AChrelevIED);
+        [~, intervalIED, ~] = InIntervals(IED.timestamps(:,1),AChrelevIED);
+        if isfile(rippleFile)
+            [~, intervalRip, ~] = InIntervals(ripples.peaks,AChrelevIED);
+        end 
 
-    for j = 1:size(achrelevRip{sesh},1)
-        lfpIdx = intervalLFP==j;
-        iedIdx = intervalIED==j;
-        achIdx = intervalACh==j;
-        ripIdx = intervalRip==j;
-        ach.lfp{sesh,2}{j,1} = SleepScoreLFP.t(lfpIdx);
-        ach.lfp{sesh,2}{j,2} = double(SleepScoreLFP.swLFP(lfpIdx));
-        ach.lfp{sesh,2}{j,3} = double(SleepScoreLFP.thLFP(lfpIdx));
-        ach.ied{sesh,2}{j,1} = IED.timestamps(iedIdx,1);
-        ach.ied{sesh,2}{j,2} = IED.rippleStats.data.peakAmplitude(iedIdx);
-        ach.ied{sesh,2}{j,3} = IED.rippleStats.data.peakFrequency(iedIdx);
-        ach.ied{sesh,2}{j,4} = IED.rippleStats.data.duration(iedIdx);
-        ach.ach{sesh,2}{j,1} = AChAnalyzis.time(achIdx);
-        ach.ach{sesh,2}{j,2} = AChAnalyzis.AChTrace(achIdx);
-        ach.rip{sesh,2}{j,1} = ripples.peaks(ripIdx);
-        ach.rip{sesh,2}{j,2} = ripples.peakNormedPower(ripIdx);
+        for pack = 1:size(AChrelevIED,1)
+            lfpIdx = intervalLFP==pack;
+            iedIdx = intervalIED==pack;
+            achIdx = intervalACh==pack;
+            
+            ach.ied.ach{sesh,1}.timestamps{pack,1} = AChAnalyzis.time(achIdx)';
+            ach.ied.ach{sesh,1}.trace{pack,1} = AChAnalyzis.AChTrace(achIdx);
+
+            ach.ied.ied{sesh,1}.timestamps{pack,1} = IED.timestamps(iedIdx,1);
+            ach.ied.ied{sesh,1}.pkAmp{pack,1} = IED.rippleStats.data.peakAmplitude(iedIdx); 
+            ach.ied.ied{sesh,1}.pkFreq{pack,1} = IED.rippleStats.data.peakFrequency(iedIdx); 
+            ach.ied.ied{sesh,1}.dur{pack,1} = IED.rippleStats.data.duration(iedIdx);
+
+            ach.ied.lfp{sesh,1}.timestamps{pack,1} = SleepScoreLFP.t(lfpIdx);
+            ach.ied.lfp{sesh,1}.sw{pack,1} = double(SleepScoreLFP.swLFP(lfpIdx));
+            ach.ied.lfp{sesh,1}.th{pack,1} = double(SleepScoreLFP.thLFP(lfpIdx));
+
+            if isfile(rippleFile)
+                ripIdx = intervalRip==pack;
+                ach.ied.rip{sesh,1}.timestamps{pack,1} = ripples.peaks(ripIdx);
+                ach.ied.rip{sesh,1}.peakNormedPower{pack,1} = ripples.peakNormedPower(ripIdx);
+            end
+        end 
         
-    end 
-    
-    %}
+        if isfile(rippleFile)
+            % Acetycholine Packets Ripples only
+            %   extract for:    IEDs (time, pkAmp, pkFreq, dur)
+            %                   Ripples (time, size)
+            %                   LFP (time, sw, th)
+            %                   ACh (time, trace)
+            [~, intR, ~] = InIntervals(ripples.peaks,AChAnalyzis.time(p2p));
+            
+            relevantP2PR = unique(intR); % Isoate the Acetylcholine P2P packets that have ripples.
+            relevantP2PR = relevantP2PR(relevantP2PR ~= 0);
+            relevantP2PR = relevantP2PR(~ismember(relevantP2PR,relevantP2PI));
+                
+            AChrelevRip = AChAnalyzis.time(p2p(relevantP2PR,:));
+            ach.no_ied.packets{sesh,1} = AChrelevRip;
 
-    
+            [~, intervalRip, ~] = InIntervals(ripples.peaks,AChrelevRip);
+            [~, intervalLFP, ~] = InIntervals(SleepScoreLFP.t,AChrelevRip);
+            [~, intervalACh, ~] = InIntervals(AChAnalyzis.time,AChrelevRip);
+        
+            for pack = 1:size(AChrelevRip,1)
+                lfpIdx = intervalLFP==pack;
+                achIdx = intervalACh==pack;
+                ripIdx = intervalRip==pack;
+                ach.no_ied.lfp{sesh,1}.timestamps{pack,1} = SleepScoreLFP.t(lfpIdx);
+                ach.no_ied.lfp{sesh,1}.sw{pack,1} = double(SleepScoreLFP.swLFP(lfpIdx));
+                ach.no_ied.lfp{sesh,1}.th{pack,1} = double(SleepScoreLFP.thLFP(lfpIdx));
+                ach.no_ied.ach{sesh,1}.timestamps{pack,1} = AChAnalyzis.time(achIdx)';
+                ach.no_ied.ach{sesh,1}.trace{pack,1} = AChAnalyzis.AChTrace(achIdx);
+                ach.no_ied.rip{sesh,1}.timestamps{pack,1} = ripples.peaks(ripIdx);
+                ach.no_ied.rip{sesh,1}.peakNormedPower{pack,1} = ripples.peakNormedPower(ripIdx);
+            end 
+        end
+    end
 end
+toc;
+%% IED-based ACh Packet Normalization of IED, Ripples, and ACh
+% Find the max resample factor numerator, P.
+tic;
+maxP = 0;
+for sesh = 1:numel(ach.ied.packets) % over sessions
+    for pack = 1:size(ach.ied.packets{sesh},1) % over packets
+        newP = numel(ach.ied.ach{sesh}.timestamps{pack});
+        maxP = max([newP maxP]);
+    end
+end
+
+% resample the acetylcholine traces and interpolate the timestamps.
+for sesh = 1:numel(ach.ied.packets) % over sessions
+    for pack = 1:size(ach.ied.ach{sesh}.timestamps,1) % over packets
+        Q = numel(ach.ied.ach{sesh}.timestamps{pack});
+        ogTidx = normalize(1:numel(ach.ied.ach{sesh}.timestamps{pack}),'range');
+        ipTidx = normalize(1:maxP,'range');
+        ts = interp1(ogTidx,...
+                     ach.ied.ach{sesh}.timestamps{pack},...
+                     ipTidx);
+        ts = transpose(ts);
+        tr = resample(ach.ied.ach{sesh}.trace{pack},maxP,Q);
+        ach.ied.ach_resamp{sesh,1}.timestamps{pack,1} = ts;
+        ach.ied.ach_resamp{sesh,1}.trace{pack,1} = tr;
+    end
+    fprintf('Session %d Resampled\n',sesh);
+end
+% normalize IEDs, Ripples, and ACh times to the newly resampled ACh data.
+plotting = false;
+
+for sesh = 1:numel(ach.ied.packets)
+    for pack = 1:size(ach.ied.packets{sesh},1)
+        [normAChTime, C, S] = normalize(ach.ied.ach{sesh}.timestamps{pack},'range');
+        normIEDTime = normalize(ach.ied.ied{sesh}.timestamps{pack},'center',C,'scale',S);
+        normRipTime = normalize(ach.ied.rip{sesh}.timestamps{pack},'center',C,'scale',S);
+        
+        if plotting
+            figure(1); clf; hold on;
+            plot(normAChTime, ach.ach{i,1}{j,2});
+            xline(normIEDTime,'Color','red','LineWidth',2);
+            if ~isempty(normRipTime)
+                xline(normRipTime,'Color','blue','LineWidth',2);
+            end
+        end
+
+        % save data
+        ach.ied.ach_normed{sesh,1}.timestamps{pack,1} = normAChTime;
+        ach.ied.ied_normed{sesh,1}.timestamps{pack,1} = normIEDTime;
+        ach.ied.rip_normed{sesh,1}.timestamps{pack,1} = normRipTime;
+    end
+end 
+ach.ied = orderfields(ach.ied);
+toc;
+%% Ripple-based ACh Packet Normalization of Ripples and ACh
+% Find the max resample factor numerator, P.
+tic;
+maxP = 0;
+for sesh = 1:numel(ach.no_ied.packets)
+    for pack = 1:size(ach.no_ied.packets{sesh},1)
+        newP = numel(ach.no_ied.ach{sesh}.timestamps{pack});
+        maxP = max([newP maxP]);
+    end
+end
+
+% resample the acetylcholine traces and timestamps.
+
+for sesh = 1:numel(ach.no_ied.packets)
+    for pack = 1:size(ach.no_ied.ach{sesh}.timestamps,1)
+        Q = numel(ach.no_ied.ach{sesh}.timestamps{pack});
+        if Q == 0
+            continue;
+        end
+        ogTidx = normalize(1:numel(ach.no_ied.ach{sesh}.timestamps{pack}),'range');
+        ipTidx = normalize(1:maxP,'range');
+        ts = interp1(ogTidx,...
+                     ach.no_ied.ach{sesh}.timestamps{pack},...
+                     ipTidx);
+        ts = transpose(ts);
+        tr = resample(ach.no_ied.ach{sesh}.trace{pack},maxP,Q);
+        ach.no_ied.ach_resamp{sesh,1}.timestamps{pack,1} = ts;
+        ach.no_ied.ach_resamp{sesh,1}.trace{pack,1} = tr;
+    end
+    fprintf('Session %d Resampled\n',sesh);
+end
+
+% normalize Ripples, and ACh times to the newly resampled ACh data.
+plotting = false;
+
+for sesh = 1:numel(ach.no_ied.packets)
+    for pack = 1:size(ach.no_ied.packets{sesh},1)
+        [normAChTime, C, S] = normalize(ach.no_ied.ach{sesh}.timestamps{pack},'range');
+        normRipTime = normalize(ach.no_ied.rip{sesh}.timestamps{pack},'center',C,'scale',S);
+
+        if plotting
+            figure(1); clf; hold on;
+            plot(normAChTime, ach.ach{i,2}{j,2});
+            xline(normRipTime,'Color','blue','LineWidth',2);
+        end
+
+        % save data
+        ach.no_ied.ach_normed = normAChTime;
+        ach.no_ied.rip_normed = normRipTime;
+    end
+end 
+ach.no_ied = orderfields(ach.no_ied);
+toc;
+
+%% Figure 1: ACh Packet Duration Kernel Density (No-IED, p-Ripples, Big (True) IEDs)
+% Define Colors
+numCols = 15;
+threshLines = copper(numCols);
+iediedLines = spring(numCols);
+ripripLines = summer(numCols);
+iedripLines = winter(numCols);
+
+% Pick session(s) you want to plot
+subset = [1:2]; 
+
+for sesh = subset;
+    ach_w_ied{sesh} = transpose(cat(2,ach.ied.ach_resamp{sesh}.trace{:}));
+end
+ach_w_ied = cat(1,ach_w_ied{:});
+%%
+allACH = cat(1,resampACH{subset});
+allACHr = cat(1,resampACHr{subset});
+alldt = cat(1,dt{subset});
+allds = cat(1,ds{subset});
+alldd = cat(1,dd{subset});
+iedrt = cat(1,rt{subset,1});
+iedrs = cat(1,rs{subset,1});
+riprt = cat(1,rt{subset,2});
+riprs = cat(1,rs{subset,2});
+bigEnough = allds > 2500;
+
+fig10 = figure(10); clf; hold on;
+fig10.Units = 'Normalized';
+fig10.Position = [0.6 0.05 0.3 0.4];
+
+[IEDTrain, I] = sort(alldt(:,1));
+sizeIEDTrain = allds(I);
+duraIEDTrain = alldd(I);
+iedSubset = sizeIEDTrain>4000;
+iedFreq = Frequency(IEDTrain,'binSize',0.05,'show','off');
+% iedFreq = Frequency(IEDTrain(iedSubset),'binSize',0.05,'show','off');
+% pathRipFreq = Frequency(IEDTrain(sizeIEDTrain<=5000),'binSize',0.05,'show','off');
+% iedFreq = Frequency(IEDTrain(duraIEDTrain>0.06),'binSize',0.05,'show','off');
+
+[RipRipTrain, I] = sort(riprt(:,1));
+sizeRipRipTrain = riprs(I);
+ripRipFreq = Frequency(RipRipTrain,'binSize',0.05,'show','off');
+
+[IedRipTrain, I] = sort(iedrt(:,1));
+sizeIedRipTrain = iedrs(I);
+iedRipFreq = Frequency(IedRipTrain,'binSize',0.05,'show','off');
+
+nrem.achavg = normalize(mean(allACH,1));
+nrem.achravg = normalize(mean(allACHr,1));
+nrem.achts = normalize(1:numel(nrem.achavg),'range');
+nrem.achrts = normalize(1:numel(nrem.achravg),'range');
+
+nIED = normalize(iedFreq(:,2));
+nRipRip = normalize(ripRipFreq(:,2));
+nIedRip = normalize(iedRipFreq(:,2));
+
+ii = plot(iedFreq(:,1),nIED,'color',iediedLines(3,:),'LineWidth',2);
+rr = plot(ripRipFreq(:,1),nRipRip,'color',ripripLines(3,:),'LineWidth',2);
+ir = plot(iedRipFreq(:,1),nIedRip,'color',iedripLines(3,:),'LineWidth',2);
+
+yyaxis right;
+ai = plot(nrem.achts,nrem.achavg,'-','color',threshLines(5,:),'LineWidth',2);
+ar = plot(nrem.achrts,nrem.achravg,'-','color',threshLines(10,:),'LineWidth',2);
+
+title('ACh Packets')
+% legend({'IED Frequency','Ripple Frequency (no IED)','ACh signal (w/ IED)','ACh signal (no IED)'},'Location','best');
+% legend({'IED Frequency','Ripple Frequency','ACh signal (w/ IED)'},'Location','best');
+legend([ai ar ii rr ir], ...
+    {'ACh Packets w/ IED','ACh Packets w/o IED','IED Frequency','Ripple Frequency (packets w/ IED)','Ripple Frequency (packets w/o IED'}, ...
+    'location','southoutside')
+xlabel('Normalized Time')
+ylabel('ZScore Signal')
+
+% xlim([0 1])
