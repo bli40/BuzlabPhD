@@ -150,7 +150,7 @@ for sesh = 1:4
     ix = linspace(1, numel(statesIdx.states), numel(EMGFromLFP.data));
     mvmt = interp1(ix, EMGFromLFP.data, 1:numel(statesIdx.states));
 
-    statenum = find()
+    statenum = find(strcmp())
     idx_ = find(statesIdx.states ~= 2);
     
     %%%%%%% get microarousals during non-REM sleep using movement data
