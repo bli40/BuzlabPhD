@@ -25,8 +25,8 @@ addpath(genpath('C:\Users\brian\buzcode'));
 addpath(genpath('C:\Users\brian\BuzlabPhD\rotation-iedAChSuppression'));
 
 % Add path to parent directory containing all ACh## sub-directories.
-rootpath = '\\research-cifs.nyumc.org\research\buzsakilab\Buzsakilabspace\LabShare\AnnaMaslarova\YZ';
-% rootpath = 'E:\BuzLabTemporaryCopies';
+% rootpath = '\\research-cifs.nyumc.org\research\buzsakilab\Buzsakilabspace\LabShare\AnnaMaslarova\YZ';
+rootpath = 'E:\BuzLabTemporaryCopies';
 
 % Find mouse/session children directories
 sessions = dir([rootpath,'/**/ACh*/*Session*']);
@@ -120,13 +120,13 @@ saveACH             = true;
 sessionsToRun       = ACh01; % Check 'Mouse Indices' in 'Manual Variables'
 
 % (Re)Initiate Data Variables
-nREMrelevIED = {};
-nREMrelevRip = {};
-AChrelevIED = {};
-AChrelevRip = {};
+% nREMrelevIED = {};
+% nREMrelevRip = {};
+% AChrelevIED = {};
+% AChrelevRip = {};
 clear ach nrem;
 
-for sesh = 1:2
+for sesh = sessionsToRun
     if manualCheck
         livePlot = true;
     else
@@ -516,9 +516,11 @@ for sesh = 1:numel(ach.ied.packets) % over sessions
     end
 end
 
-% resample the acetylcholine traces and interpolate the timestamps.
+plotting = false;
+
 for sesh = 1:numel(ach.ied.packets) % over sessions
     for pack = 1:size(ach.ied.ach{sesh}.timestamps,1) % over packets
+        % resample the acetylcholine traces and interpolate the timestamps.
         Q = numel(ach.ied.ach{sesh}.timestamps{pack});
         ogTidx = normalize(1:numel(ach.ied.ach{sesh}.timestamps{pack}),'range');
         ipTidx = normalize(1:maxP,'range');
@@ -529,14 +531,8 @@ for sesh = 1:numel(ach.ied.packets) % over sessions
         tr = resample(ach.ied.ach{sesh}.trace{pack},maxP,Q);
         ach.ied.ach_resamp{sesh,1}.timestamps{pack,1} = ts;
         ach.ied.ach_resamp{sesh,1}.trace{pack,1} = tr;
-    end
-    fprintf('Session %d Resampled\n',sesh);
-end
-% normalize IEDs, Ripples, and ACh times to the newly resampled ACh data.
-plotting = false;
 
-for sesh = 1:numel(ach.ied.packets)
-    for pack = 1:size(ach.ied.packets{sesh},1)
+        % Normalized Data (ACh, IED, Ripples)
         [normAChTime, C, S] = normalize(ach.ied.ach{sesh}.timestamps{pack},'range');
         normIEDTime = normalize(ach.ied.ied{sesh}.timestamps{pack},'center',C,'scale',S);
         normRipTime = normalize(ach.ied.rip{sesh}.timestamps{pack},'center',C,'scale',S);
@@ -549,13 +545,17 @@ for sesh = 1:numel(ach.ied.packets)
                 xline(normRipTime,'Color','blue','LineWidth',2);
             end
         end
-
-        % save data
         ach.ied.ach_normed{sesh,1}.timestamps{pack,1} = normAChTime;
         ach.ied.ied_normed{sesh,1}.timestamps{pack,1} = normIEDTime;
         ach.ied.rip_normed{sesh,1}.timestamps{pack,1} = normRipTime;
+
+        % Zero Data (IED, Ripples)
+        ach.ied.ied_zeroed{sesh,1}.timestamps{pack,1} = ach.ied.ied{sesh}.timestamps{pack} - ach.ied.ach{sesh}.timestamps{pack}(1);
+        ach.ied.rip_zeroed{sesh,1}.timestamps{pack,1} = ach.ied.rip{sesh}.timestamps{pack} - ach.ied.ach{sesh}.timestamps{pack}(1);
     end
-end 
+    fprintf('Session %d Resampled\n',sesh);
+end
+
 ach.ied = orderfields(ach.ied);
 toc;
 %% Ripple-based ACh Packet Normalization of Ripples and ACh
@@ -569,10 +569,10 @@ for sesh = 1:numel(ach.no_ied.packets)
     end
 end
 
-% resample the acetylcholine traces and timestamps.
 
 for sesh = 1:numel(ach.no_ied.packets)
     for pack = 1:size(ach.no_ied.ach{sesh}.timestamps,1)
+        % resample the acetylcholine traces and timestamps.
         Q = numel(ach.no_ied.ach{sesh}.timestamps{pack});
         if Q == 0
             continue;
@@ -586,15 +586,8 @@ for sesh = 1:numel(ach.no_ied.packets)
         tr = resample(ach.no_ied.ach{sesh}.trace{pack},maxP,Q);
         ach.no_ied.ach_resamp{sesh,1}.timestamps{pack,1} = ts;
         ach.no_ied.ach_resamp{sesh,1}.trace{pack,1} = tr;
-    end
-    fprintf('Session %d Resampled\n',sesh);
-end
 
-% normalize Ripples, and ACh times to the newly resampled ACh data.
-plotting = false;
-
-for sesh = 1:numel(ach.no_ied.packets)
-    for pack = 1:size(ach.no_ied.packets{sesh},1)
+        % normalize data (ACh, ripples)
         [normAChTime, C, S] = normalize(ach.no_ied.ach{sesh}.timestamps{pack},'range');
         normRipTime = normalize(ach.no_ied.rip{sesh}.timestamps{pack},'center',C,'scale',S);
 
@@ -603,87 +596,147 @@ for sesh = 1:numel(ach.no_ied.packets)
             plot(normAChTime, ach.ach{i,2}{j,2});
             xline(normRipTime,'Color','blue','LineWidth',2);
         end
+        ach.no_ied.ach_normed{sesh,1}.timestamps{pack,1} = normAChTime;
+        ach.no_ied.rip_normed{sesh,1}.timestamps{pack,1} = normRipTime;
 
-        % save data
-        ach.no_ied.ach_normed = normAChTime;
-        ach.no_ied.rip_normed = normRipTime;
+        % zero data (Ripples)
+        ach.no_ied.rip_zeroed{sesh,1}.timestamps{pack,1} = ach.no_ied.rip{sesh}.timestamps{pack} - ach.no_ied.ach{sesh}.timestamps{pack}(1);
+
+    end
+    fprintf('Session %d Resampled\n',sesh);
+end
+
+plotting = false;
+
+for sesh = 1:numel(ach.no_ied.packets)
+    for pack = 1:size(ach.no_ied.packets{sesh},1)
+
     end
 end 
 ach.no_ied = orderfields(ach.no_ied);
 toc;
 
-%% Figure 1: ACh Packet Duration Kernel Density (No-IED, p-Ripples, Big (True) IEDs)
+%% Concatenate Packet Data for Session Wide Plots
 % Define Colors
 numCols = 15;
 threshLines = copper(numCols);
-iediedLines = spring(numCols);
+bIedLines = spring(numCols);
+pRipLines = abyss(numCols);
 ripripLines = summer(numCols);
 iedripLines = winter(numCols);
 
 % Pick session(s) you want to plot
-subset = [1:2]; 
-
-for sesh = subset;
-    ach_w_ied{sesh} = transpose(cat(2,ach.ied.ach_resamp{sesh}.trace{:}));
+subset = [1:4]; 
+[achIedTs, achNoIedTs, achIedResamp, achNoIedResamp, iedTimes, iedSizes, iedDuras, ripIedTimes, ripRipTimes] = deal({});
+for sesh = subset
+    achIedTs{sesh} = transpose(cat(2,ach.ied.ach_resamp{sesh}.timestamps{:}));
+    achNoIedTs{sesh} = transpose(cat(2,ach.no_ied.ach_resamp{sesh}.timestamps{:}));
+    achIedResamp{sesh} = transpose(cat(2,ach.ied.ach_resamp{sesh}.trace{:}));
+    achNoIedResamp{sesh} = transpose(cat(2,ach.no_ied.ach_resamp{sesh}.trace{:}));
+    iedTimes{sesh} = cat(1,ach.ied.ied_normed{sesh}.timestamps{:});
+    iedSizes{sesh} = cat(1,ach.ied.ied{sesh}.pkAmp{:});
+    iedDuras{sesh} = cat(1,ach.ied.ied{sesh}.dur{:});
+    ripIedTimes{sesh} = cat(1,ach.ied.rip_normed{sesh}.timestamps{:});
+    ripRipTimes{sesh} = cat(1,ach.no_ied.rip_normed{sesh}.timestamps{:});
 end
-ach_w_ied = cat(1,ach_w_ied{:});
-%%
-allACH = cat(1,resampACH{subset});
-allACHr = cat(1,resampACHr{subset});
-alldt = cat(1,dt{subset});
-allds = cat(1,ds{subset});
-alldd = cat(1,dd{subset});
-iedrt = cat(1,rt{subset,1});
-iedrs = cat(1,rs{subset,1});
-riprt = cat(1,rt{subset,2});
-riprs = cat(1,rs{subset,2});
-bigEnough = allds > 2500;
+achIedTs = cat(1,achIedTs{:});
+achNoIedTs = cat(1,achNoIedTs{:});
+achIedResamp = cat(1,achIedResamp{:});
+achNoIedResamp = cat(1,achNoIedResamp{:});
+iedTimes = cat(1,iedTimes{:});
+iedSizes = cat(1,iedSizes{:});
+iedDuras = cat(1,iedDuras{:});
+ripIedTimes = cat(1,ripIedTimes{:});
+ripRipTimes = cat(1,ripRipTimes{:});
 
-fig10 = figure(10); clf; hold on;
-fig10.Units = 'Normalized';
-fig10.Position = [0.6 0.05 0.3 0.4];
+%% Figure 1
+[IEDTrain,I] = sort(iedTimes(:,1));
+IEDTrainSizes = iedSizes(I);
+bigEnough = IEDTrainSizes > 5000;
 
-[IEDTrain, I] = sort(alldt(:,1));
-sizeIEDTrain = allds(I);
-duraIEDTrain = alldd(I);
-iedSubset = sizeIEDTrain>4000;
-iedFreq = Frequency(IEDTrain,'binSize',0.05,'show','off');
-% iedFreq = Frequency(IEDTrain(iedSubset),'binSize',0.05,'show','off');
-% pathRipFreq = Frequency(IEDTrain(sizeIEDTrain<=5000),'binSize',0.05,'show','off');
-% iedFreq = Frequency(IEDTrain(duraIEDTrain>0.06),'binSize',0.05,'show','off');
+bIedFreq = Frequency(IEDTrain(bigEnough),'binSize',0.05,'show','off');
+pRipFreq = Frequency(IEDTrain(~bigEnough),'binSize',0.05,'show','off');
 
-[RipRipTrain, I] = sort(riprt(:,1));
-sizeRipRipTrain = riprs(I);
+[RipRipTrain,~] = sort(ripRipTimes(:,1));
+% sizeRipRipTrain = riprs(I);
 ripRipFreq = Frequency(RipRipTrain,'binSize',0.05,'show','off');
 
-[IedRipTrain, I] = sort(iedrt(:,1));
-sizeIedRipTrain = iedrs(I);
+[IedRipTrain,~] = sort(ripIedTimes(:,1));
+% sizeIedRipTrain = iedrs(I);
 iedRipFreq = Frequency(IedRipTrain,'binSize',0.05,'show','off');
 
-nrem.achavg = normalize(mean(allACH,1));
-nrem.achravg = normalize(mean(allACHr,1));
-nrem.achts = normalize(1:numel(nrem.achavg),'range');
-nrem.achrts = normalize(1:numel(nrem.achravg),'range');
+achIedNormAvg = normalize(mean(achIedResamp,1));
+achNoIedNormAvg = normalize(mean(achNoIedResamp,1));
+achIedNormTs = normalize(1:numel(achIedNormAvg),'range');
+achNoIedNormTs = normalize(1:numel(achNoIedNormAvg),'range');
 
-nIED = normalize(iedFreq(:,2));
+nBIED = normalize(bIedFreq(:,2));
+nPRip = normalize(pRipFreq(:,2));
 nRipRip = normalize(ripRipFreq(:,2));
 nIedRip = normalize(iedRipFreq(:,2));
 
-ii = plot(iedFreq(:,1),nIED,'color',iediedLines(3,:),'LineWidth',2);
+% plotting
+fig1 = figure(1); clf; hold on;
+fig1.Units = 'Normalized';
+fig1.Position = [0 0.05 1 0.875];
+
+tl = tiledlayout(3,5);
+tl.Padding = 'compact';
+
+% Normalized Time ACh Packets and Event Frequency
+nexttile; hold on; 
+bi = plot(bIedFreq(:,1),nBIED,'color',bIedLines(1,:),'LineWidth',2);
+pr = plot(pRipFreq(:,1),nPRip,'color',pRipLines(15,:),'LineWidth',2);
 rr = plot(ripRipFreq(:,1),nRipRip,'color',ripripLines(3,:),'LineWidth',2);
 ir = plot(iedRipFreq(:,1),nIedRip,'color',iedripLines(3,:),'LineWidth',2);
+YL = ylim;
+YL(2) = YL(2) + 2;
+ylim(YL);
+ylabel('ZScore Signal')
 
 yyaxis right;
-ai = plot(nrem.achts,nrem.achavg,'-','color',threshLines(5,:),'LineWidth',2);
-ar = plot(nrem.achrts,nrem.achravg,'-','color',threshLines(10,:),'LineWidth',2);
+ai = plot(achIedNormTs,achIedNormAvg,'-','color',threshLines(5,:),'LineWidth',2);
+ar = plot(achNoIedNormTs,achNoIedNormAvg,'-','color',threshLines(10,:),'LineWidth',2);
+YL = ylim;
+YL(2) = YL(2) + 2;
+ylim(YL);
 
 title('ACh Packets')
-% legend({'IED Frequency','Ripple Frequency (no IED)','ACh signal (w/ IED)','ACh signal (no IED)'},'Location','best');
-% legend({'IED Frequency','Ripple Frequency','ACh signal (w/ IED)'},'Location','best');
-legend([ai ar ii rr ir], ...
-    {'ACh Packets w/ IED','ACh Packets w/o IED','IED Frequency','Ripple Frequency (packets w/ IED)','Ripple Frequency (packets w/o IED'}, ...
-    'location','southoutside')
+legend([ai ar bi pr rr ir],...
+    {'ACh Packets w/ IED','ACh Packets w/o IED','Big IED Frequency','Small IED Frequency','Ripple Frequency (packets w/ IED)','Ripple Frequency (packets w/o IED'}, ...
+    'location','north', ...
+    'FontSize',6)
 xlabel('Normalized Time')
 ylabel('ZScore Signal')
 
-% xlim([0 1])
+% ACh Packet Duration Kernel Densities
+nexttile; hold on;
+achIedDurs = range(achIedTs,2);
+achNoIedDurs = range(achNoIedTs,2);
+
+[fI, xI] = ksdensity(achIedDurs);
+[fNI, xNI] = ksdensity(achNoIedDurs);
+
+plot(xI, fI,'color',bIedLines(1,:),'LineWidth',2);
+plot(xNI, fNI,'color',threshLines(1,:),'LineWidth',2);
+
+xline(xI(fI==max(fI)),'--','color',bIedLines(1,:),'LineWidth',2)
+xline(xNI(fNI==max(fNI)),'--','color',threshLines(1,:),'LineWidth',2)
+text(xI(fI==max(fI))+4, fI(fI==max(fI)), ...
+     num2str(xI(fI==max(fI))), ...
+     'FontSize',10, ...
+     'Color',bIedLines(1,:));
+text(xNI(fNI==max(fNI))-2, fNI(fNI==max(fNI)), ...
+     num2str(xNI(fNI==max(fNI))), ...
+     'FontSize',10, ...
+     'Color',threshLines(1,:), ...
+     'HorizontalAlignment','right');
+
+
+title('Kernel Density of ACh Packet Durations')
+xlabel('Packet Duration (s)')
+ylabel('Probability')
+legend({'IED Packets','IED-less Packets'},'location','best')
+
+fprintf('Ripple-Only Packet Peak Duration: %f\n', xNI(fNI==max(fNI)));
+fprintf('IED Packet Peak Duration: %f\n', xI(fI==max(fI)));
