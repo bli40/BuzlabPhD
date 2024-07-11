@@ -627,41 +627,49 @@ iedripLines = winter(numCols);
 
 % Pick session(s) you want to plot
 subset = [1:4]; 
-[achIedTs, achNoIedTs, achIedResamp, achNoIedResamp, iedTimes, iedSizes, iedDuras, ripIedTimes, ripRipTimes] = deal({});
+[achIedTs, achNoIedTs, achIedResamp, achNoIedResamp, iedNormTimes,...
+    iedZeroTimes, iedSizes, iedDuras, ripIedNormTimes, ripIedZeroTimes,...
+    ripRipNormTimes, ripRipZeroTimes] = deal({});
 for sesh = subset
     achIedTs{sesh} = transpose(cat(2,ach.ied.ach_resamp{sesh}.timestamps{:}));
     achNoIedTs{sesh} = transpose(cat(2,ach.no_ied.ach_resamp{sesh}.timestamps{:}));
     achIedResamp{sesh} = transpose(cat(2,ach.ied.ach_resamp{sesh}.trace{:}));
     achNoIedResamp{sesh} = transpose(cat(2,ach.no_ied.ach_resamp{sesh}.trace{:}));
-    iedTimes{sesh} = cat(1,ach.ied.ied_normed{sesh}.timestamps{:});
+    iedNormTimes{sesh} = cat(1,ach.ied.ied_normed{sesh}.timestamps{:});
+    iedZeroTimes{sesh} = cat(1,ach.ied.ied_zeroed{sesh}.timestamps{:});
     iedSizes{sesh} = cat(1,ach.ied.ied{sesh}.pkAmp{:});
     iedDuras{sesh} = cat(1,ach.ied.ied{sesh}.dur{:});
-    ripIedTimes{sesh} = cat(1,ach.ied.rip_normed{sesh}.timestamps{:});
-    ripRipTimes{sesh} = cat(1,ach.no_ied.rip_normed{sesh}.timestamps{:});
+    ripIedNormTimes{sesh} = cat(1,ach.ied.rip_normed{sesh}.timestamps{:});
+    ripIedZeroTimes{sesh} = cat(1,ach.ied.rip_zeroed{sesh}.timestamps{:});
+    ripRipNormTimes{sesh} = cat(1,ach.no_ied.rip_normed{sesh}.timestamps{:});
+    ripRipZeroTimes{sesh} = cat(1,ach.no_ied.rip_zeroed{sesh}.timestamps{:});
 end
 achIedTs = cat(1,achIedTs{:});
 achNoIedTs = cat(1,achNoIedTs{:});
 achIedResamp = cat(1,achIedResamp{:});
 achNoIedResamp = cat(1,achNoIedResamp{:});
-iedTimes = cat(1,iedTimes{:});
+iedNormTimes = cat(1,iedNormTimes{:});
+iedZeroTimes = cat(1,iedZeroTimes{:});
 iedSizes = cat(1,iedSizes{:});
 iedDuras = cat(1,iedDuras{:});
-ripIedTimes = cat(1,ripIedTimes{:});
-ripRipTimes = cat(1,ripRipTimes{:});
+ripIedNormTimes = cat(1,ripIedNormTimes{:});
+ripIedZeroTimes = cat(1,ripIedZeroTimes{:});
+ripRipNormTimes = cat(1,ripRipNormTimes{:});
+ripRipZeroTimes = cat(1,ripRipZeroTimes{:});
 
 %% Figure 1
-[IEDTrain,I] = sort(iedTimes(:,1));
+[IEDTrain,I] = sort(iedNormTimes(:,1));
 IEDTrainSizes = iedSizes(I);
 bigEnough = IEDTrainSizes > 5000;
 
 bIedFreq = Frequency(IEDTrain(bigEnough),'binSize',0.05,'show','off');
 pRipFreq = Frequency(IEDTrain(~bigEnough),'binSize',0.05,'show','off');
 
-[RipRipTrain,~] = sort(ripRipTimes(:,1));
+[RipRipTrain,~] = sort(ripRipNormTimes(:,1));
 % sizeRipRipTrain = riprs(I);
 ripRipFreq = Frequency(RipRipTrain,'binSize',0.05,'show','off');
 
-[IedRipTrain,~] = sort(ripIedTimes(:,1));
+[IedRipTrain,~] = sort(ripIedNormTimes(:,1));
 % sizeIedRipTrain = iedrs(I);
 iedRipFreq = Frequency(IedRipTrain,'binSize',0.05,'show','off');
 
@@ -684,7 +692,7 @@ tl = tiledlayout(3,5);
 tl.Padding = 'compact';
 
 % Normalized Time ACh Packets and Event Frequency
-nexttile; hold on; 
+nexttile([1]); cla; hold on; 
 bi = plot(bIedFreq(:,1),nBIED,'color',bIedLines(1,:),'LineWidth',2);
 pr = plot(pRipFreq(:,1),nPRip,'color',pRipLines(15,:),'LineWidth',2);
 rr = plot(ripRipFreq(:,1),nRipRip,'color',ripripLines(3,:),'LineWidth',2);
@@ -709,8 +717,8 @@ legend([ai ar bi pr rr ir],...
 xlabel('Normalized Time')
 ylabel('ZScore Signal')
 
-% ACh Packet Duration Kernel Densities
-nexttile; hold on;
+%% ACh Packet Duration Kernel Densities
+nexttile([6]); cla; hold on;
 achIedDurs = range(achIedTs,2);
 achNoIedDurs = range(achNoIedTs,2);
 
@@ -740,3 +748,31 @@ legend({'IED Packets','IED-less Packets'},'location','best')
 
 fprintf('Ripple-Only Packet Peak Duration: %f\n', xNI(fNI==max(fNI)));
 fprintf('IED Packet Peak Duration: %f\n', xI(fI==max(fI)));
+
+%% Event Time Kernel Densities
+nexttile([11]); cla; hold on;
+bigEnough = iedSizes>5000;
+% [fBIz,xBIz] = ksdensity(iedZeroTimes(bigEnough));
+[fPRz,xPRz] = ksdensity(iedZeroTimes);
+[fRIz,xRIz] = ksdensity(ripIedZeroTimes);
+[fRRz,xRRz] = ksdensity(ripRipZeroTimes);
+
+% plot(xBIz, fBIz,'color',bIedLines(1,:),'LineWidth',2);
+plot(xPRz, fPRz,'color',pRipLines(1,:),'LineWidth',2);
+plot(xRIz, fRIz,'color',iedripLines(1,:),'LineWidth',2);
+plot(xRRz, fRRz,'color',ripripLines(1,:),'LineWidth',2);
+% legend({'Big IED','Small IED','Ripples','Ripples (no IED)'});
+legend({'IED','Ripples','Ripples (no IED)'});
+
+%%
+xline(xI(fI==max(fI)),'--','color',bIedLines(1,:),'LineWidth',2)
+xline(xNI(fNI==max(fNI)),'--','color',threshLines(1,:),'LineWidth',2)
+text(xI(fI==max(fI))+4, fI(fI==max(fI)), ...
+     num2str(xI(fI==max(fI))), ...
+     'FontSize',10, ...
+     'Color',bIedLines(1,:));
+text(xNI(fNI==max(fNI))-2, fNI(fNI==max(fNI)), ...
+     num2str(xNI(fNI==max(fNI))), ...
+     'FontSize',10, ...
+     'Color',threshLines(1,:), ...
+     'HorizontalAlignment','right');
