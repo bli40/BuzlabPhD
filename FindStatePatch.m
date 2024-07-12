@@ -5,7 +5,7 @@ function [events] = FindStatePatch(trace, period, varargin)
     minDur = 0;
     lowThresholdFactor = 2;
     highThresholdFactor = 0;
-    minIterSamples = 10;
+    minIterSamples = 1;
     stateFilt = 1;
     state = ones(size(trace));
     
@@ -25,7 +25,7 @@ function [events] = FindStatePatch(trace, period, varargin)
     idx = find(state ~= stateFilt);
     %%
     trace(idx) = 0;
-    timestamps = 0:period:length(trace)-1;
+    times = (0:length(trace)-1)*period;
     
     
     %% first Low Thresholding
@@ -95,8 +95,7 @@ function [events] = FindStatePatch(trace, period, varargin)
     else
         disp(['After peak thresholding: ' num2str(length(thirdPass)) ' events.']);
     end
-    
-    
+
     %% Detect peak position for each ripple
     
     peakPosition = zeros(size(thirdPass,1),1);
@@ -106,9 +105,9 @@ function [events] = FindStatePatch(trace, period, varargin)
     end
     
     % Discard ripples that are way too long
-    events = [timestamps(thirdPass(:,1));
-              timestamps(peakPosition); 
-              timestamps(thirdPass(:,2)); 
+    events = [times(thirdPass(:,1));
+              times(peakPosition); 
+              times(thirdPass(:,2)); 
               peakNormalizedPower']';
     duration = events(:,3)-events(:,1);
     events(duration>maxDur,:) = NaN;
@@ -127,7 +126,7 @@ function [events] = FindStatePatch(trace, period, varargin)
     events.timestamps = evs(:,[1 3]);
     events.peaks = evs(:,2);            %peaktimes? could also do these as timestamps and then ripples.ints for start/stops?
     events.peakNormedPower = evs(:,4);  %amplitudes?
-    events.times = timestamps;
+    events.times = times;
     events.trace = trace;
     
     

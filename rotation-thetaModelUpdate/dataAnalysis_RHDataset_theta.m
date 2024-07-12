@@ -2,6 +2,7 @@
 clear all; close all;
 addpath(genpath('C:\Users\brian\buzcode'));
 addpath(genpath('C:\Users\brian\fooof_mat\fooof_mat'));
+addpath(genpath('C:\Users\brian\BuzlabPhD'));
 basePath = 'C:\Users\brian\OneDrive - NYU Langone Health\buzlab-phd\e13\e13_26m1\e13_26m1_210913';
 cd(basePath)
 %% Load LFP, Session, and Spike Data
@@ -23,9 +24,9 @@ load(fullfile(basePath,'\e13_26m1_210913.cell_metrics.cellinfo.mat'));
 %% Multitaper!!! Testing for general knowledge
 figure(10);
 [spectrogram, t, f] = MTSpectrogram(double(lfp.data), ...
-                                    'window',1,...
+                                    'window',5,...
                                     'range',[0 30], ...
-                                    'show','off');
+                                    'show','on');
 t = t - t(1);
 thetaPower = mean(spectrogram(f>4 & f<12,:),1);
 deltaPower = mean(spectrogram(f>0 & f<=4,:),1);
@@ -36,10 +37,7 @@ qt = ismember(behavior.timestamps, behavior.trials.position_trcat.timestamps);
 wholeSpeed = zeros(size(behavior.timestamps));
 wholeSpeed(qt) = behavior.trials.position_trcat.v;
 
-highTDR = FindStatePatch(thetaDeltaRatio,mean(diff(t)), ...
-    'maxDur',inf, ...
-    'minDur',0, ...
-    'lowThresholdFactor',2);
+highTDR = FindStatePatch(thetaDeltaRatio,mean(diff(t)));
 
 
 % Compute spectrum
@@ -144,28 +142,87 @@ while livePlot
     end
 end
 
-%% MUA
+%% MUA Test Simulation
+Fs = 1000;
+sampDur = 200; % seconds
+numSamples = Fs*sampDur;
+ts = linspace(0,sampDur,numSamples);
+wavFreq = 8;
+period = 1/wavFreq;
+pseudoTheta = sin(2*pi*ts/period)';
+plot(ts, pseudoTheta);
+
+[unitSpectrogram,t,f] = MTSpectrogram(pseudoTheta, ...
+                                      'frequency',Fs,...
+                                      'window',10, ...
+                                      'range',[0 50], ...
+                                      'show','off');
+mu = mean(unitSpectrogram,2);
+v = var(unitSpectrogram,0,2);
+
+figure(3); clf; hold on;
+%logSpectrum = log(spectrum);         % classic value
+logSpectrum = log(mu)-v./(2*mu.*mu);  % corrected value, valid for mu/s > 1.5
+logS = sqrt(v./mu.^2);               % valid for mu/s > 2.5
+PlotMean(f,logSpectrum,logSpectrum-logS,logSpectrum+logS,':','r');
+xlabel('Frequency (Hz)');
+ylabel('Power');
+title('Power Spectrum Pseudo Spike Train');
+
+pseudoSpikeTrain = sort(randi(20000,400000,1)./100);
+pseudoSpikeVal = interp1(ts,pseudoTheta,pseudoSpikeTrain);
+thetaLockIdx = pseudoSpikeVal > 0.75;
+pseudoSpikeTrain = pseudoSpikeTrain(thetaLockIdx);
+plot(pseudoSpikeTrain(1:100), ones(size(pseudoSpikeTrain(1:100))),'.')
+
+pst = Frequency(pseudoSpikeTrain,'binsize',0.02);
+
+fc = 4;
+fs = 1/0.02;
+[b,a] = butter(5,(fc/(fs/2)),'high');
+pstFilt = filtfilt(b,a,pst(:,2));
+
+[unitSpectrogram,t,f] = MTSpectrogram(pstFilt, ...
+                                      'frequency',50,...
+                                      'window',20, ...
+                                      'range',[0 30], ...
+                                      'show','off');
+mu = mean(unitSpectrogram,2);
+v = var(unitSpectrogram,0,2);
+
+figure(3); clf; hold on;
+%logSpectrum = log(spectrum);         % classic value
+logSpectrum = log(mu)-v./(2*mu.*mu);  % corrected value, valid for mu/s > 1.5
+logS = sqrt(v./mu.^2);               % valid for mu/s > 2.5
+PlotMean(f,logSpectrum,logSpectrum-logS,logSpectrum+logS,':','r');
+xlabel('Frequency (Hz)');
+ylabel('Power');
+title('Power Spectrum Pseudo Spike Train');
+%% MUA 
 figure(2)
 pyramidal = (strcmp(cell_metrics.putativeCellType, "Pyramidal Cell"))';
 narrowinter = (strcmp(cell_metrics.putativeCellType, "Narrow Interneuron"))';
 wideinter = (strcmp(cell_metrics.putativeCellType, "Wide Interneuron"))';
 
-mua = cat(1,spikes.times{pyramidal});
+subset = numel(pyramidal);
+randCells = randperm(numel(pyramidal));
+randCells = randCells(1:subset);
+
+mua = cat(1,spikes.times{pyramidal(randCells)});
 mua = sort(mua);
 [stat,int,ind] = InIntervals(mua,highTDR.timestamps);
 mua = mua(stat);
-muaFreq = Frequency(mua,'binSize',0.02);
+muaFreq = Frequency(mua,'binSize',0.01);
 
-fc = 4;
-fs = 1/0.02;
+fc = 5;
+fs = 1/0.01;
 [b,a] = butter(5,(fc/(fs/2)),'high');
 muaFreqFilt = filtfilt(b,a,muaFreq(:,2));
 [unitSpectrogram,t,f] = MTSpectrogram(muaFreqFilt, ...
                                       'frequency',50,...
-                                      'window',1, ...
+                                      'window',15, ...
                                       'range',[0 30], ...
                                       'show','on');
-% [stat, int, ind] = InIntervals(t,highTDR.timestamps);
 mu = mean(unitSpectrogram,2);
 v = var(unitSpectrogram,0,2);
 
