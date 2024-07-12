@@ -707,7 +707,7 @@ fig1 = figure(1); clf; hold on;
 fig1.Units = 'Normalized';
 fig1.Position = [0 0.05 1 0.875];
 
-tl = tiledlayout(3,3);
+tl = tiledlayout(4,3);
 tl.Padding = 'compact';
 title(tl,'ACh06');
 
@@ -892,3 +892,65 @@ xlabel('Time (s)')
 ylim([0 5]);
 xlim(XL)
 
+%% Figure 1, part 2
+%%%%% Ripple Rate, IED Rate, ACh dF/F
+nexttile(10,[1,1]); cla; hold on;
+loadData = false;
+clear peri
+for sesh = 15
+    if loadData
+        clear ripples IED AChAnalyzis digitalIn
+        sessionInd = sesh;
+        load(fullfile(sessions(sessionInd).folder,sessions(sessionInd).name,[sessions(sessionInd).name,'.IEDclean.events.mat']));
+        load(fullfile(sessions(sessionInd).folder,sessions(sessionInd).name,[sessions(sessionInd).name,'.AChAnalyzis.mat']));
+        load(fullfile(sessions(sessionInd).folder,sessions(sessionInd).name,[sessions(sessionInd).name,'.DigitalIn.events.mat']));
+        rippleFile = fullfile(sessions(sessionInd).folder,sessions(sessionInd).name,[sessions(sessionInd).name,'.ripples.events.mat']);
+        if isfile(rippleFile)
+            load(rippleFile);
+        else
+            fprintf("Ripple file does not exist. Continuing Analysis.\n");
+        end
+    end
+
+     % Create ACh Timestamps with proper start time offset
+    AChAnalyzis.offsetS = digitalIn.intsPeriods{2}(1);
+    AChAnalyzis.time = 1:numel(AChAnalyzis.AChTrace);
+    AChAnalyzis.time = AChAnalyzis.time./AChAnalyzis.samplingRate + AChAnalyzis.offsetS;
+    
+    ripFreq = Frequency(ripples.peaks);
+    iedFreq = Frequency(IED.peaks);
+
+    plot(AChAnalyzis.time, AChAnalyzis.AChTrace);
+    plot(rippleFreq(:,1), rippleFreq(:,2));
+    plot(iedFreq(:,1), iedFreq(:,2));
+
+    for r = 1:numel(ripples.peaks)
+        sampPeriod = 1/AChAnalyzis.samplingRate;
+        halfAchWindow = 20/sampPeriod;
+
+        achCenter = find(AChAnalyzis.time>=ripples.peaks(r),1,'first');
+        achL = achCenter - halfAchWindow;
+        achR = achCenter + halfAchWindow;
+     
+        if achL < 0 | achR > numel(AChAnalyzis.time)
+            disp('bad window');
+            continue;
+        end
+
+        sampPeriod = mean(diff(ripFreq(:,1)));
+        halfRipWindow = 20/sampPeriod;
+        ripCenter = find(ripFreq(:,1) >= ripples.peaks(r),1,'first');
+        ripL = ripCenter - halfRipWindow;
+        ripR = ripCenter + halfRipWindow;
+
+        if achL < 0 | achR > numel(ripFreq(:,1))
+            disp('bad window')
+            continue;
+        end
+
+        peri.ach{sesh}(r,:) = AChAnalyzis.AChTrace(achL:achR);
+        peri.rip{sesh}(r,:) = ripFreq(ripL:ripR);
+    end
+    
+
+end

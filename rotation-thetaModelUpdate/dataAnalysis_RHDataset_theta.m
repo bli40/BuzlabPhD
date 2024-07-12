@@ -204,28 +204,31 @@ pyramidal = (strcmp(cell_metrics.putativeCellType, "Pyramidal Cell"))';
 narrowinter = (strcmp(cell_metrics.putativeCellType, "Narrow Interneuron"))';
 wideinter = (strcmp(cell_metrics.putativeCellType, "Wide Interneuron"))';
 
-subset = numel(pyramidal);
-randCells = randperm(numel(pyramidal));
-randCells = randCells(1:subset);
-
-mua = cat(1,spikes.times{pyramidal(randCells)});
-mua = sort(mua);
-[stat,int,ind] = InIntervals(mua,highTDR.timestamps);
-mua = mua(stat);
-muaFreq = Frequency(mua,'binSize',0.01);
-
-fc = 5;
-fs = 1/0.01;
-[b,a] = butter(5,(fc/(fs/2)),'high');
-muaFreqFilt = filtfilt(b,a,muaFreq(:,2));
-[unitSpectrogram,t,f] = MTSpectrogram(muaFreqFilt, ...
-                                      'frequency',50,...
-                                      'window',15, ...
-                                      'range',[0 30], ...
-                                      'show','on');
-mu = mean(unitSpectrogram,2);
-v = var(unitSpectrogram,0,2);
-
+for rep = 1:100
+    subset = 100;
+    randCells = randperm(numel(pyramidal));
+    randCells = randCells(1:subset);
+    
+    mua = cat(1,spikes.times{pyramidal(randCells)});
+    mua = sort(mua);
+    [stat,int,ind] = InIntervals(mua,highTDR.timestamps);
+    mua = mua(stat);
+    muaFreq = Frequency(mua,'binSize',0.01);
+    
+    fc = 5;
+    fs = 1/0.01;
+    [b,a] = butter(5,(fc/(fs/2)),'high');
+    muaFreqFilt = filtfilt(b,a,muaFreq(:,2));
+    [unitSpectrogram,t,f] = MTSpectrogram(muaFreqFilt, ...
+                                          'frequency',50,...
+                                          'window',15, ...
+                                          'range',[0 30], ...
+                                          'show','on');
+    mu(:,rep) = mean(unitSpectrogram,2);
+    v(:,rep) = var(unitSpectrogram,0,2);
+end
+mu = mean(mu,2);
+v = mean(v,2);
 figure(3); clf; hold on;
 %logSpectrum = log(spectrum);         % classic value
 logSpectrum = log(mu)-v./(2*mu.*mu);  % corrected value, valid for mu/s > 1.5
@@ -234,6 +237,9 @@ PlotMean(f,logSpectrum,logSpectrum-logS,logSpectrum+logS,':','r');
 xlabel('Frequency (Hz)');
 ylabel('Power');
 title('Power Spectrum MUA');
+
+%% SUA
+
 
 %% Bandpass filter and Hilbert Transform -> Theta Phase Precession
 fb = [5 12];
