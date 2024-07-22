@@ -892,7 +892,7 @@ xlabel('Time (s)')
 ylim([0 5]);
 xlim(XL)
 
-%% Figure 1, part 2
+%% Figure 1, part 2 (Nothing yet)
 %%%%% Ripple Rate, IED Rate, ACh dF/F
 nexttile(10,[1,1]); cla; hold on;
 loadData = false;
