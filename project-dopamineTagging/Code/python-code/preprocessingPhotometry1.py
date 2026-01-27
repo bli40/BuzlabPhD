@@ -9,11 +9,11 @@ from scipy.signal import medfilt, butter, filtfilt
 from scipy.stats import linregress
 from scipy.optimize import curve_fit, minimize
 import scipy
-from code.tools.data_import import import_ppd, preprocess_data
+from github_code_ipshita.tools.data_import import import_ppd, preprocess_data
 from pathlib import Path
 
 # Top-level session directory
-data_folder = Path(r'\\research-cifs.nyumc.org\research\buzsakilab\Buzsakilabspace\LabShare\ZutshiI\patchTask\N17\N17_250520_sess22')
+data_folder = Path(r'\\research-cifs.nyumc.org\research\buzsakilab\Buzsakilabspace\LabShare\ZutshiI\patchTask\N14\N14_250509_sess15')
 
 # Find all subdirectories
 subdirs = [d for d in data_folder.iterdir() if d.is_dir()]

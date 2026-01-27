@@ -1,0 +1,4 @@
+__pycache__/
+unversioned/
+ErrorLog.txt
+setups.json

@@ -1,0 +1,328 @@
+# Code which runs on host computer and implements communication with
+# pyboard and saving data to disk.
+# Copyright (c) Thomas Akam 2018-2023.
+# Licenced under the GNU General Public License v3.
+
+import numpy as np
+import json
+import time
+from pathlib import Path
+from inspect import getsource
+from datetime import datetime
+from time import sleep
+
+from GUI.pyboard import Pyboard, PyboardError
+from GUI.dir_paths import upy_dir
+from config.GUI_config import VERSION, update_interval
+
+
+class Acquisition_board(Pyboard):
+    """Class for aquiring data from a micropython photometry system on a host computer."""
+
+    def __init__(self, port, device_config):
+        """Open connection to pyboard and instantiate Photometry class on pyboard with
+        provided parameters."""
+        self.config = device_config
+        self.mode = None
+        self.data_file = None
+        self.running = False
+        self.LED_current = [0, 0]
+        self.file_type = None
+        self.port = port
+        self.clipping_threshold = int(self.config["ADC_max_value"] * 0.98)
+        super().__init__(port, baudrate=115200)
+        self.enter_raw_repl()  # Reset pyboard.
+        # Transfer firmware if not already on board.
+        self.exec(getsource(_djb2_file))  # Define djb2 hashing function on board.
+        self.exec(getsource(_receive_file))  # Define recieve file function on board.
+        self.transfer_file(Path(upy_dir, "photometry_upy.py"))
+        # Import firmware and instantiate photometry class.
+        self.exec("import photometry_upy")
+        self.exec(f"p = photometry_upy.Photometry({repr(device_config)})")
+
+    # -----------------------------------------------------------------------
+    # Data acquisition.
+    # -----------------------------------------------------------------------
+
+    def set_mode(self, mode):
+        # Set control channel mode.
+        assert mode in [
+            "2EX_2EM_continuous",
+            "2EX_1EM_pulsed",
+            "2EX_2EM_pulsed",
+            "3EX_2EM_pulsed",
+        ], "Invalid mode, value values: '2EX_2EM_continuous', '2EX_1EM_pulsed', '2EX_2EM_pulsed', or '3EX_2EM_pulsed'."
+        self.mode = mode
+        self.n_analog_signals = 3 if mode == "3EX_2EM_pulsed" else 2
+        self.n_digital_signals = 1 if mode == "3EX_2EM_pulsed" else 2
+        self.pulsed_mode = mode.split("_")[-1] == "pulsed"
+        self.max_LED_current = self.config["max_LED_current"]["pulsed" if self.pulsed_mode else "continuous"]
+        if self.pulsed_mode:
+            self.max_rate = self.config["max_sampling_rate"]["pulsed"] // self.n_analog_signals
+        else:
+            self.max_rate = self.config["max_sampling_rate"]["continuous"]
+        self.exec("p.set_mode('{}')".format(mode))
+
+    def set_LED_current(self, LED_1_current=None, LED_2_current=None):
+        if LED_1_current is not None:
+            assert (
+                LED_1_current <= self.max_LED_current
+            ), "Specified LED current exceeds hardware_config.max_LED_current"
+            self.LED_current[0] = LED_1_current
+        if LED_2_current is not None:
+            assert (
+                LED_2_current <= self.max_LED_current
+            ), "Specified LED current exceeds hardware_config.max_LED_current"
+            self.LED_current[1] = LED_2_current
+        if self.running:
+            if LED_1_current is not None:
+                self.serial.write(b"\xFD" + LED_1_current.to_bytes(2, "little"))
+            if LED_2_current is not None:
+                self.serial.write(b"\xFE" + LED_2_current.to_bytes(2, "little"))
+        else:
+            self.exec("p.set_LED_current({},{})".format(LED_1_current, LED_2_current))
+
+    def set_sampling_rate(self, sampling_rate):
+        self.sampling_rate = sampling_rate
+        self.buffer_size = max(
+            2 * self.n_analog_signals, int(self.sampling_rate // (1000 / update_interval)) * 2 * self.n_analog_signals
+        )
+        self.serial_chunk_size = (self.buffer_size + 2) * 2
+
+    def start(self, sync_out_config):
+        """Start data aquistion and streaming on the pyboard."""
+        self.exec_raw_no_follow("p.start({},{},{})".format(self.sampling_rate, self.buffer_size, sync_out_config))
+        self.chunk_number = 0  # Number of data chunks recieved from board, modulo 2**16.
+        self.running = True
+
+    def record(self, data_dir, subject_ID, file_type="ppd"):
+        """Open data file and write data header."""
+        assert file_type in ["csv", "ppd"], "Invalid file type"
+        self.file_type = file_type
+        date_time = datetime.now()
+        file_name = subject_ID + date_time.strftime("-%Y-%m-%d-%H%M%S") + "." + file_type
+        file_path = Path(data_dir, file_name)
+        self.header_dict = {
+            "subject_ID": subject_ID,
+            "date_time": date_time.isoformat(timespec="milliseconds"),
+            "end_time": date_time.isoformat(timespec="milliseconds"),  # Overwritten on file close.
+            "n_analog_signals": self.n_analog_signals,
+            "n_digital_signals": self.n_digital_signals,
+            "mode": self.mode,
+            "sampling_rate": self.sampling_rate,
+            "volts_per_division": self.config["ADC_volts_per_division"],
+            "ADC_max_value": self.config["ADC_max_value"],
+            "LED_current": self.LED_current,
+            "version": VERSION,
+        }
+        if file_type == "ppd":  # Single binary .ppd file.
+            self.data_file = open(file_path, "wb")
+            data_header = json.dumps(self.header_dict).encode()
+            self.data_file.write(len(data_header).to_bytes(2, "little"))
+            self.data_file.write(data_header)
+        elif file_type == "csv":  # Header in .json file and data in .csv file.
+            self.json_path = Path(data_dir, file_name[:-4] + ".json")
+            with open(self.json_path, "w") as headerfile:
+                headerfile.write(json.dumps(self.header_dict, sort_keys=True, indent=4))
+            self.data_file = open(file_path, "w")
+            self.data_file.write(
+                ", ".join(
+                    [f"Analog{a+1}" for a in range(self.n_analog_signals)]
+                    + [f"Digital{d+1}" for d in range(self.n_digital_signals)]
+                )
+                + "\n"
+            )
+        return file_name
+
+    def stop_recording(self):
+        if self.data_file:
+            # Write session end time to file.
+            self.header_dict["end_time"] = datetime.now().isoformat(timespec="milliseconds")
+            if self.file_type == "ppd":  # Overwrite header at start of datafile.
+                self.data_file.seek(2)
+                self.data_file.write(json.dumps(self.header_dict).encode())
+            elif self.file_type == "csv":  # Overwrite seperate json file.
+                with open(self.json_path, "w") as headerfile:
+                    headerfile.write(json.dumps(self.header_dict, sort_keys=True, indent=4))
+            self.data_file.close()
+        self.data_file = None
+
+    def stop(self):
+        if self.data_file:
+            self.stop_recording()
+        self.serial.write(b"\xFF")  # Stop signal
+        sleep(0.1)
+        self.serial.reset_input_buffer()
+        self.running = False
+
+    def process_data(self):
+        """Read a chunk of data from the serial line, check data integrity, extract signals,
+        save signals to disk if file is open, return signals."""
+        unexpected_input = []
+        data_chunks = []
+        while self.serial.in_waiting > 0:
+            new_byte = self.serial.read(1)
+            if new_byte == b"\x07":  # Start of data chunk.
+                chunk = np.frombuffer(self.serial.read(self.serial_chunk_size), dtype=np.dtype("<u2"))
+                recieved_chunk_number = chunk[0]
+                checksum = chunk[1]
+                data = chunk[2:]
+                if checksum == int(np.sum(data, dtype=np.uint64)) & 0xFFFF:  # Checksum of data chunk is correct.
+                    self.chunk_number = (self.chunk_number + 1) & 0xFFFF
+                    n_skipped_chunks = np.int16(recieved_chunk_number - self.chunk_number)  # rollover safe subtraction.
+                    if n_skipped_chunks > 0:  # Prepend data with zeros to replace skipped chunks.
+                        skip_pad = np.zeros(self.buffer_size * n_skipped_chunks, dtype=np.dtype("<u2"))
+                        data = np.hstack([skip_pad, data])
+                        self.chunk_number = (self.chunk_number + n_skipped_chunks) & 0xFFFF
+                    data_chunks.append(data)
+            else:
+                unexpected_input.append(new_byte)
+                unexpected_bytes = b"".join(unexpected_input[-8:])
+                if unexpected_bytes in (b"\x04Traceba", b"uncaught"):  # Code on pyboard has crashed.
+                    data_err = (unexpected_bytes + self.read_until(2, b"\x04>", timeout=1)).decode()
+                    raise PyboardError(data_err)
+        # Extract signals.
+        if data_chunks:
+            data = np.hstack(data_chunks)
+            analog = data >> 1  # Analog signal is most significant 15 bits.
+            digital = (data % 2) == 1  # Digital signal is least significant bit.
+            if self.mode == "2EX_2EM_continuous":
+                signals = [analog[a :: self.n_analog_signals] for a in range(self.n_analog_signals)]  # [signal1, ...]
+                DIs = [digital[d :: self.n_analog_signals] for d in range(self.n_digital_signals)]  # [DI1, ..., DIn]
+                clipping_high = [np.any(signal > self.clipping_threshold) for signal in signals]
+                clipping_low = [np.all(signal == 0) for signal in signals]
+
+            else:  # Pulsed modes
+                # Extract raw signals.
+                LED_on_signals = [analog[2 * a :: 2 * self.n_analog_signals] for a in range(self.n_analog_signals)]
+                baselines = [analog[2 * a + 1 :: 2 * self.n_analog_signals] for a in range(self.n_analog_signals)]
+                DIs = [digital[2 * d :: 2 * self.n_analog_signals] for d in range(self.n_digital_signals)]
+                # Compute baseline subtracted signals.
+                signals = [
+                    np.maximum(signal.astype(np.int32) - baseline, 0).astype(np.dtype("<u2"))
+                    for signal, baseline in zip(LED_on_signals, baselines)
+                ]
+                # Evaluate if signal is clipping for each channel.
+                clipping_high = [
+                    np.any(LED_on_signal > self.clipping_threshold) or np.any(baseline > self.clipping_threshold)
+                    for LED_on_signal, baseline in zip(LED_on_signals, baselines)
+                ]
+                clipping_low = [
+                    np.all(LED_on_signal == 0) or np.all(baseline == 0)
+                    for LED_on_signal, baseline in zip(LED_on_signals, baselines)
+                ]
+            # Write data to disk.
+            if self.data_file:
+                if self.file_type == "ppd":  # Binary data file.
+                    self.data_file.write(data.tobytes())
+                else:  # CSV data file.
+                    np.savetxt(self.data_file, np.array(signals + DIs, dtype=int).T, fmt="%d", delimiter=",")
+            return signals, DIs, clipping_high, clipping_low
+
+    def unique_id(self):
+        """Return the hardware ID of the pyboard."""
+        return int(self.eval("p.unique_id").decode())
+
+    # -----------------------------------------------------------------------
+    # File transfer
+    # -----------------------------------------------------------------------
+
+    def get_file_hash(self, target_path):
+        """Get the djb2 hash of a file on the pyboard."""
+        try:
+            file_hash = int(self.eval("_djb2_file('{}')".format(target_path)).decode())
+        except PyboardError:  # File does not exist.
+            return -1
+        return file_hash
+
+    def transfer_file(self, file_path):
+        """Copy file at file_path to pyboard."""
+        target_path = file_path.name
+        file_size = file_path.stat().st_size
+        file_hash = _djb2_file(file_path)
+        # Try to load file, return once file hash on board matches that on computer.
+        for i in range(10):
+            if file_hash == self.get_file_hash(target_path):
+                return
+            self.exec_raw_no_follow("_receive_file('{}',{})".format(target_path, file_size))
+            with open(file_path, "rb") as f:
+                while True:
+                    chunk = f.read(512)
+                    if not chunk:
+                        break
+                    self.serial.write(chunk)
+                    response_bytes = self.serial.read(2)
+                    if response_bytes != b"OK":
+                        time.sleep(0.01)
+                        self.serial.reset_input_buffer()
+                        raise PyboardError
+                self.follow(3)
+        # Unable to transfer file.
+        raise PyboardError
+
+
+# ----------------------------------------------------------------------------------------
+#  Helper functions.
+# ----------------------------------------------------------------------------------------
+
+
+# djb2 hashing algorithm used to check integrity of transfered files.
+def _djb2_file(file_path):
+    with open(file_path, "rb") as f:
+        h = 5381
+        while True:
+            c = f.read(4)
+            if not c:
+                break
+            h = ((h << 5) + h + int.from_bytes(c, "little")) & 0xFFFFFFFF
+    return h
+
+
+# Used on pyboard for file transfer.
+def _receive_file(file_path, file_size):
+    usb = pyb.USB_VCP()
+    usb.setinterrupt(-1)
+    buf_size = 512
+    buf = bytearray(buf_size)
+    buf_mv = memoryview(buf)
+    bytes_remaining = file_size
+    try:
+        with open(file_path, "wb") as f:
+            while bytes_remaining > 0:
+                bytes_read = usb.recv(buf, timeout=5)
+                usb.write(b"OK")
+                if bytes_read:
+                    bytes_remaining -= bytes_read
+                    f.write(buf_mv[:bytes_read])
+    except:
+        usb.write(b"ER")
+
+
+def get_board_info(port):
+    """Get the unique id of pyboard without instantiating an Acquisition_board object."""
+    try:
+        board = Pyboard(port)
+        board.enter_raw_repl()
+        unique_id = int(board.eval("int.from_bytes(pyb.unique_id(), 'little')").decode())
+        flashdrive_enabled = "MSC" in board.eval("pyb.usb_mode()").decode()
+        board.close()
+    except:
+        unique_id = None
+        flashdrive_enabled = None
+    return unique_id, flashdrive_enabled
+
+
+def set_flashdrive_enabled(port, enable):
+    """Enable/disable the flashdrive on pyboard at specified port, return True is set OK else False."""
+    # try:
+    board = Pyboard(port)
+    board.enter_raw_repl()
+    if enable:
+        bootstr = "import pyb\npyb.usb_mode('VCP+MSC')"
+    else:
+        bootstr = "import pyb\npyb.usb_mode('VCP')"
+    board.exec(f"with open('boot.py','w') as f: f.write({repr(bootstr)})")
+    board.exec_raw_no_follow("pyb.hard_reset()")
+    board.close()
+    # except PyboardError:
+    #    return False
