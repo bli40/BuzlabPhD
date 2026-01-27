@@ -1,12 +1,15 @@
 %% Load Data and Check if Preprocessing is Complete
 clear all;
 close all;
+addpath('C:\Users\Gergely\Documents\Brian\BuzlabPhD\project-dopamineTagging\Code\matlab-code');
 directory = readtable('C:\Users\Gergely\Documents\Brian\Data\project-dopamineTagging-data\data-directory.xlsx');
 sessions2analyze = logical(directory.Use);
-animals2analyze = strcmp(directory.Mouse,'N17');
-sessionPaths = directory.Path(sessions2analyze & animals2analyze);
+animals2analyze = strcmp(directory.Mouse,'N14');
+twoRegions = directory.HPC & directory.STR;
+% sessionPaths = directory.Path(sessions2analyze & animals2analyze);
+sessionPaths = directory.Path(animals2analyze & twoRegions);
 disp(sessionPaths);
-sesh = 1;
+sesh = 2;
 
 for s = 1:numel(sessionPaths)
     preprocessedPaths = dir(fullfile(sessionPaths{s},'\*.photometry.*.sync.conc.mat'));
@@ -16,10 +19,37 @@ for s = 1:numel(sessionPaths)
         sessionName = split(preprocessedPaths(e).name,'.');
         fprintf(2,'<strong>\t%s\n</strong>',sessionName{3})
     end
+    if numel(preprocessedPaths) == 0
+        syncPhotometryPaths = dir(fullfile(sessionPaths{s},'*\*_new_photometry_sync.mat'));
+        if numel(syncPhotometryPaths) ~= 0
+            epochs = split({syncPhotometryPaths.name},'-');
+            epochs = unique(epochs(:,:,1));
+            for i = 1:numel(epochs)
+                fprintf('\t%s - %i files ready to <strong>concatenate</strong>.\n', epochs{i}, sum(contains({syncPhotometryPaths.name},epochs{i})));
+            end
+        else
+            photometryDataPaths = dir(fullfile(sessionPaths{s},'*\*_new_photometry.mat'));
+            if numel(photometryDataPaths) ~= 0
+                epochs = split({photometryDataPaths.name},'-');
+                epochs = unique(epochs(:,:,1));
+                for i = 1:numel(epochs)
+                    fprintf('\t%s - %i files ready to <strong>synchronize</strong>.\n', epochs{i}, sum(contains({photometryDataPaths.name},epochs{i})));
+                end
+            else
+                epochsDataPaths = dir(fullfile(sessionPaths{s},'*\*.ppd'));
+                epochs = split({epochsDataPaths.name},'-');
+                epochs = unique(epochs(:,:,1));
+                for i = 1:numel(epochs)
+                    fprintf('\t%s - %i files ready to <strong>preprocess</strong>.\n', epochs{i}, sum(contains({epochsDataPaths.name},epochs{i})));
+                end
+            end
+        end
+    end
 end
+cd(sessionPaths{sesh});
 
 %% Initialize
-sesh = 6;
+sesh = 1;
 
 cd(sessionPaths{sesh});
 d = (dir(fullfile(sessionPaths{sesh},'N*.session.mat')));
@@ -261,7 +291,7 @@ for e = 1:numel(events2plot)
         'DisplayName',events2plot{e});
     x = [tWind, fliplr(tWind)];
     y = [etaHPC + etaHPC_sem, fliplr(etaHPC - etaHPC_sem)];
-    patch(x,y,hpc_col(e,:),'FaceAlpha', 0.5,'EdgeColor','none','DisplayName','SEM');
+    patch(x,y,hpc_col(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
     YL1 = ylim;
     % plot([0 0], YL1,'-k','LineWidth',0.5);
     xlabel('Time from event (s)');
@@ -275,7 +305,7 @@ for e = 1:numel(events2plot)
         'DisplayName',events2plot{e});
     x = [tWind, fliplr(tWind)];
     y = [etaSTR + etaSTR_sem, fliplr(etaSTR - etaSTR_sem)];
-    patch(x,y,str_col(e,:),'FaceAlpha', 0.5,'EdgeColor','none','DisplayName','SEM');
+    patch(x,y,str_col(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
     YL2 = ylim;
     % plot([0 0], YL2,'-k','LineWidth',0.5);
     xlabel('Time from event (s)');
