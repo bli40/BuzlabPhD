@@ -40,17 +40,18 @@ noiseCh = 31;
                                      'passband',[130 250]);
 
 %% 4. Extract sharp wave ripples (no noise channel)
-lfp_rip = bz_GetLFP(23);
-lfp_noise = bz_GetLFP(31);
+lfp_rip = bz_GetLFP(121);
+lfp_noise = bz_GetLFP(127);
 
 [ripples] = bz_FindRipples(lfp_rip.data, lfp_rip.timestamps,'savemat',true,'durations',[30 200],'passband',[130 250]); % lfp_rip.data
 
 save("N17_250520_sess22.ripples.events.mat", "ripples")
 %% 5. Sleep score
-%badChannels = [24:38 48:63]; %N7
-%badChannels = [0:3 15:18 21:30 43 50 95 97]; %N9
-%badChannels = [0:3 15:18 21:30 41 43 46 47 50 52 95 97]; %N15
-badChannels = [42 48 56:59 61 70 72]; %N17
+% badChannels = [24:38 48:63]; %N7
+% badChannels = [0:3 15:18 21:30 43 50 95 97]; %N9
+% badChannels = [0:3 15:18 21:30 41 43 46 47 50 52 95 97]; %N15
+% badChannels = [42 48 56:59 61 70 72]; %N17
+badChannels = [74]; %N14
 
 SleepScoreMaster(pwd,'stickytrigger',true,'rejectChannels',badChannels); % try to sleep score
 % SleepScoreMaster_km(pwd,'stickytrigger',true,'rejectChannels',badChannels); % try to sleep score

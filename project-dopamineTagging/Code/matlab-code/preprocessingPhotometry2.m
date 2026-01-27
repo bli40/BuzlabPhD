@@ -1,11 +1,13 @@
 %% Load Data Directory and filenames
 clear all;
 close all;
-addpath('C:\Users\Gergely\Documents\Brian\DA-Tagging-Project\Code\');
-directory = readtable('C:\Users\Gergely\Documents\Brian\DA-Tagging-Project\Data\data-directory.xlsx');
+addpath('C:\Users\Gergely\Documents\Brian\BuzlabPhD\project-dopamineTagging\Code\matlab-code');
+directory = readtable('C:\Users\Gergely\Documents\Brian\Data\project-dopamineTagging-data\data-directory.xlsx');
 sessions2analyze = logical(directory.Use);
-animals2analyze = strcmp(directory.Mouse,'N17');
-sessionPaths = directory.Path(sessions2analyze & animals2analyze);
+animals2analyze = strcmp(directory.Mouse,'N14');
+twoRegions = directory.HPC & directory.STR;
+% sessionPaths = directory.Path(sessions2analyze & animals2analyze);
+sessionPaths = directory.Path(animals2analyze & twoRegions);
 disp(sessionPaths);
 sesh = 2;
 
@@ -17,7 +19,34 @@ for s = 1:numel(sessionPaths)
         sessionName = split(preprocessedPaths(e).name,'.');
         fprintf(2,'<strong>\t%s\n</strong>',sessionName{3})
     end
+    if numel(preprocessedPaths) == 0
+        syncPhotometryPaths = dir(fullfile(sessionPaths{s},'*\*_new_photometry_sync.mat'));
+        if numel(syncPhotometryPaths) ~= 0
+            epochs = split({syncPhotometryPaths.name},'-');
+            epochs = unique(epochs(:,:,1));
+            for i = 1:numel(epochs)
+                fprintf('\t%s - %i files ready to <strong>concatenate</strong>.\n', epochs{i}, sum(contains({syncPhotometryPaths.name},epochs{i})));
+            end
+        else
+            photometryDataPaths = dir(fullfile(sessionPaths{s},'*\*_new_photometry.mat'));
+            if numel(photometryDataPaths) ~= 0
+                epochs = split({photometryDataPaths.name},'-');
+                epochs = unique(epochs(:,:,1));
+                for i = 1:numel(epochs)
+                    fprintf('\t%s - %i files ready to <strong>synchronize</strong>.\n', epochs{i}, sum(contains({photometryDataPaths.name},epochs{i})));
+                end
+            else
+                epochsDataPaths = dir(fullfile(sessionPaths{s},'*\*.ppd'));
+                epochs = split({epochsDataPaths.name},'-');
+                epochs = unique(epochs(:,:,1));
+                for i = 1:numel(epochs)
+                    fprintf('\t%s - %i files ready to <strong>preprocess</strong>.\n', epochs{i}, sum(contains({epochsDataPaths.name},epochs{i})));
+                end
+            end
+        end
+    end
 end
+cd(sessionPaths{sesh});
 
 %% Sync Pre-Processed Photometry Data
 photometryDataPaths = dir(fullfile(sessionPaths{sesh},'*\*_new_photometry.mat'));
@@ -115,6 +144,15 @@ subplot(2,3,[2 3]);  hold on;
 plot(sleep1_hpc_sync.timestamps, sleep1_hpc_sync.grabDA_z,'DisplayName','sleep1')
 plot(behav1_hpc_sync.timestamps, behav1_hpc_sync.grabDA_z,'DisplayName','behav1')
 plot(sleep2_hpc_sync.timestamps, sleep2_hpc_sync.grabDA_z,'DisplayName','sleep2')
+plot(sleep1_hpc_sync.timestamps(sleep1_hpc_sync.syncpulseOnOff(:,1)), ...
+    zeros(numel(sleep1_hpc_sync.syncpulseOnOff(:,1),1)), ...
+    'k|','HandleVisibility','off');
+plot(behav1_hpc_sync.timestamps(behav1_hpc_sync.syncpulseOnOff(:,1)), ...
+    zeros(numel(behav1_hpc_sync.syncpulseOnOff(:,1),1)), ...
+    'k|','HandleVisibility','off');
+plot(sleep2_hpc_sync.timestamps(sleep2_hpc_sync.syncpulseOnOff(:,1)), ...
+    zeros(numel(sleep2_hpc_sync.syncpulseOnOff(:,1),1)), ...
+    'k|','HandleVisibility','off');
 legend()
 xlabel('time (s)')
 title('HPC DA (synced)')
@@ -123,6 +161,15 @@ subplot(2,3,[5 6]);  hold on;
 plot(sleep1_str_sync.timestamps, sleep1_str_sync.grabDA_z,'DisplayName','sleep1')
 plot(behav1_str_sync.timestamps, behav1_str_sync.grabDA_z,'DisplayName','behav1')
 plot(sleep2_str_sync.timestamps, sleep2_str_sync.grabDA_z,'DisplayName','sleep2')
+plot(sleep1_str_sync.timestamps(sleep1_str_sync.syncpulseOnOff(:,1)), ...
+    zeros(numel(sleep1_str_sync.syncpulseOnOff(:,1),1)), ...
+    'k|','HandleVisibility','off');
+plot(behav1_str_sync.timestamps(behav1_str_sync.syncpulseOnOff(:,1)), ...
+    zeros(numel(behav1_str_sync.syncpulseOnOff(:,1),1)), ...
+    'k|','HandleVisibility','off');
+plot(sleep2_str_sync.timestamps(sleep2_str_sync.syncpulseOnOff(:,1)), ...
+    zeros(numel(sleep2_str_sync.syncpulseOnOff(:,1),1)), ...
+    'k|','HandleVisibility','off');
 legend()
 ylabel('DA (z-scored)')
 xlabel('time (s)')
@@ -130,7 +177,6 @@ title('STR DA (synced)')
 
 
 %% Load Data for Concatenation
-close all; 
 clearvars -except sessionPaths sesh;
 cd Z:\\Buzsakilabspace\LabShare\ZutshiI\patchTask\N17\N17_250511_sess17\
 
