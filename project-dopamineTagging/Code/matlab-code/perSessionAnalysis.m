@@ -1,10 +1,12 @@
 %% Load Data and Check if Preprocessing is Complete
 clear all;
 close all;
-addpath('C:\Users\Gergely\Documents\Brian\BuzlabPhD\project-dopamineTagging\Code\matlab-code');
-directory = readtable('C:\Users\Gergely\Documents\Brian\Data\project-dopamineTagging-data\data-directory.xlsx');
+% addpath('C:\Users\Gergely\Documents\Brian\BuzlabPhD\project-dopamineTagging\Code\matlab-code');
+% directory = readtable('C:\Users\Gergely\Documents\Brian\Data\project-dopamineTagging-data\data-directory.xlsx');
+addpath("C:\Users\brian\BuzlabPhD\project-dopamineTagging\Code\matlab-code\");
+directory = readtable("\\research-cifs.nyumc.org\research\buzsakilab\Buzsakilabspace\LabShare\BrianLi\project-dopamine-tagging\data-directories.xlsx");
 sessions2analyze = logical(directory.Use);
-animals2analyze = strcmp(directory.Mouse,'N14');
+animals2analyze = strcmp(directory.Mouse,'N17');
 twoRegions = directory.HPC & directory.STR;
 % sessionPaths = directory.Path(sessions2analyze & animals2analyze);
 sessionPaths = directory.Path(animals2analyze & twoRegions);
@@ -79,35 +81,6 @@ load(fullfile(d(1).folder, d(1).name))
 d = (dir(fullfile('N*.MergePoints.events.mat')));
 load(fullfile(d(1).folder, d(1).name))
 
-%% Find Ripples - Solos and Bursts
-firstPass = ripples.timestamps;
-
-% Merge ripples if inter-ripple period is too short <- from bz_FindRipples
-disp(['Before ripple burst merge: ' num2str(length(firstPass)) ' events.'])
-minInterRippleInterval = 0.150; %s;
-secondPass = [];
-id = [];
-ripple = firstPass(1,:);
-for i = 2:size(firstPass,1)
-	if firstPass(i,1) - ripple(2) < minInterRippleInterval
-		% Merge
-		ripple = [ripple(1) firstPass(i,2)];    % prev ripple's endpoint is replaced by current ripple's endpoint. /kg
-	    id = [id; 1];
-    else
-		secondPass = [secondPass ; ripple];     % secondPass is updated each cycle and contains all previous ripples. /kg
-		ripple = firstPass(i,:);                % ripple is updated each cycle and contains start and end indices. /kg
-    end
-end
-
-secondPass = [secondPass ; ripple];
-if isempty(secondPass)
-	disp('Ripple burst merge failed');
-	return
-else
-	disp(['After ripple burst merge: ' num2str(length(secondPass)) ' events.']);
-end
-solos = intersect(firstPass, secondPass, 'rows');
-bursts = setdiff(secondPass, firstPass, 'rows');
 
 %% Events and Photometry
 events_possible = {'Ripples','Stims','Nosepoke','Rewarded Poke', 'Unrewarded Poke'};
@@ -152,6 +125,66 @@ for e = 1:size(events_list,1)
     ylabel('z-score')
 end
 
+%% Find Ripples - Solos and Bursts
+firstPass = ripples.timestamps;
+
+% Merge ripples if inter-ripple period is too short <- from bz_FindRipples
+disp(['Before ripple burst merge: ' num2str(length(firstPass)) ' events.'])
+minInterRippleInterval = 0.150; %s;
+secondPass = [];
+id = [];
+ripple = firstPass(1,:);
+for i = 2:size(firstPass,1)
+	if firstPass(i,1) - ripple(2) < minInterRippleInterval
+		% Merge
+		ripple = [ripple(1) firstPass(i,2)];    % prev ripple's endpoint is replaced by current ripple's endpoint. /kg
+	    id = [id; 1];
+    else
+		secondPass = [secondPass ; ripple];     % secondPass is updated each cycle and contains all previous ripples. /kg
+		ripple = firstPass(i,:);                % ripple is updated each cycle and contains start and end indices. /kg
+    end
+end
+
+secondPass = [secondPass ; ripple];
+if isempty(secondPass)
+	disp('Ripple burst merge failed');
+	return
+else
+	disp(['After ripple burst merge: ' num2str(length(secondPass)) ' events.']);
+end
+solos = intersect(firstPass, secondPass, 'rows');
+bursts = setdiff(secondPass, firstPass, 'rows');
+
+%% Ripple Burst Index
+aa = ismember(ripples.timestamps, bursts);
+bb = cumsum(aa);
+cc = bb(:,1) > bb(:,2);
+cc = cc + aa(:,2);
+ripBurstNum = cumsum(aa(:,1));
+ripBurstNum(~logical(cc)) = 0;
+[ripBurstIdx, ripBurstRevIdx, ripBurstSize] = deal(cc);
+for i = 1:max(unique(ripBurstNum))
+    ripBurstIdx(ripBurstNum == i) = cumsum(cc(ripBurstNum == i));
+    ripBurstRevIdx(ripBurstNum == i) = flip(cumsum(cc(ripBurstNum == i)));
+    ripBurstSize(ripBurstNum == i) = sum(cc(ripBurstNum == i));
+end
+
+for r = 1:max(ripBurstIdx)
+    burstPlace{r} = ripples.timestamps(ripBurstIdx == r,:);
+    burstPlaceRev{r} = ripples.timestamps(ripBurstRevIdx == r,:);
+    burstSize{r} = bursts(ismember(bursts(:,1), ripples.timestamps(ripBurstSize==2,1)),:);
+end
+
+% check
+fprintf('%i/%i ripple bursts indexed\n',max(ripBurstNum),length(bursts));
+if all(burstPlace{1}(:,1) == bursts(:,1))
+    fprintf('Ripple placement is correct!\n')
+end
+
+
+%% Mean Stimulation Time
+stimOnOff = photometry_HPC_sync_concat.timestamps(photometry_HPC_sync_concat.barcodesOnOff);
+stimDur = stimOnOff(:,2) - stimOnOff(:,1);
 
 %% ETA but in time not index space
 
@@ -159,9 +192,16 @@ end
 fs = 130;           % LFP sampling rate (Hz)
 pre  = 5;           % seconds before spike
 post = 5;           % seconds after spike
-events2plot = {'bursts', 'solos'};     
+
+% Choose Events
+N = split(num2str(1:numel(burstPlace)));
+% events2plot = {'bursts', 'solos'}; 
+% events2plot = N;
+events2plot = {'solos','1','2','3'};
+% events2plot = {'long stim','short stim'};
 % events2plot = {'stims','nosepokes'};
 % events2plot = {'rewarded pokes', 'unrewarded pokes'};
+% events2plot = {'gibberish'};
 traces2pull = {'z-score'};      % z-score, dF/F
 
 % Define relative time axis (not samples)
@@ -172,8 +212,8 @@ winLength = numel(tWind);
 stack = true;
 
 % create color scheme
-str_col = autumn(3);
-hpc_col = winter(3);
+str_col = autumn(5);
+hpc_col = winter(5);
 
 for e = 1:numel(events2plot)
     % for a = 1:numel(traces2pull)
@@ -187,6 +227,12 @@ for e = 1:numel(events2plot)
         case "stims"
             eventTimes_hpc = photometry_HPC_sync_concat.timestamps(photometry_HPC_sync_concat.barcodesOn);
             eventTimes_str = photometry_STR_sync_concat.timestamps(photometry_STR_sync_concat.barcodesOn);
+        case "long stim"
+            eventTimes_hpc = photometry_HPC_sync_concat.timestamps(photometry_HPC_sync_concat.barcodesOn(stimDur == 3));
+            eventTimes_str = photometry_STR_sync_concat.timestamps(photometry_STR_sync_concat.barcodesOn(stimDur == 3));
+        case "short stim"
+            eventTimes_hpc = photometry_HPC_sync_concat.timestamps(photometry_HPC_sync_concat.barcodesOn(stimDur == 0.5));
+            eventTimes_str = photometry_STR_sync_concat.timestamps(photometry_STR_sync_concat.barcodesOn(stimDur == 0.5));
         case "nosepokes"
             eventTimes_hpc = behavTrials.timestamps;
             eventTimes_str = behavTrials.timestamps;
@@ -202,9 +248,18 @@ for e = 1:numel(events2plot)
         case "bursts"
             eventTimes_hpc = bursts(:,1);
             eventTimes_str = bursts(:,1);
+        case "last"
+            eventTimes_hpc = burstPlaceRev{1}(:,1);
+            eventTimes_str = burstPlaceRev{1}(:,1);
         otherwise
-            fprintf('%s is not a registered event type. Halting.\n',event);
-            break;
+            if isempty(str2num(event))
+                fprintf('%s is not a registered event type. Halting.\n',event);
+                break;
+            else
+                num = str2num(event);
+                eventTimes_hpc = burstPlace{num}(:,1);
+                eventTimes_str = burstPlace{num}(:,1);
+            end
     end
     disp('Extracting event windows...')
     % Preallocate

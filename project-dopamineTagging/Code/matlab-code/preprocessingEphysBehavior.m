@@ -32,8 +32,8 @@ end
 spikes = loadSpikes('getWaveformsFromDat', false);
 
 %% 4. Extract sharp wave ripples
-pyrCh = 23;  %75 for n11 115 67 for n11
-noiseCh = 31;
+pyrCh = 121;  %75 for n11 115 67 for n11
+noiseCh = 111;
 [ripples] = bz_FindRipples(pwd,pyrCh,'noise',noiseCh, ...
                                      'savemat',true, ...
                                      'durations',[30 200], ...
