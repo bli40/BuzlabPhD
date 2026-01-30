@@ -4,7 +4,7 @@ close all;
 addpath('C:\Users\Gergely\Documents\Brian\BuzlabPhD\project-dopamineTagging\Code\matlab-code');
 directory = readtable('C:\Users\Gergely\Documents\Brian\Data\project-dopamineTagging-data\data-directory.xlsx');
 sessions2analyze = logical(directory.Use);
-animals2analyze = strcmp(directory.Mouse,'N14');
+animals2analyze = strcmp(directory.Mouse,'N17');
 twoRegions = directory.HPC & directory.STR;
 % sessionPaths = directory.Path(sessions2analyze & animals2analyze);
 sessionPaths = directory.Path(animals2analyze & twoRegions);

@@ -69,6 +69,9 @@ load(fullfile(d(1).folder, d(1).name))
 d = (dir(fullfile('N*.ripples.events.mat')));
 load(fullfile(d(1).folder, d(1).name))
 
+d = (dir(fullfile('N*.ripples.stats.mat')));
+load(fullfile(d(1).folder, d(1).name));
+
 d = (dir(fullfile('N*.SleepState.states.mat')));
 load(fullfile(d(1).folder, d(1).name))
 
@@ -155,7 +158,7 @@ end
 solos = intersect(firstPass, secondPass, 'rows');
 bursts = setdiff(secondPass, firstPass, 'rows');
 
-%% Ripple Burst Index
+%% Ripple Burst Index and Size
 aa = ismember(ripples.timestamps, bursts);
 bb = cumsum(aa);
 cc = bb(:,1) > bb(:,2);
@@ -172,7 +175,7 @@ end
 for r = 1:max(ripBurstIdx)
     burstPlace{r} = ripples.timestamps(ripBurstIdx == r,:);
     burstPlaceRev{r} = ripples.timestamps(ripBurstRevIdx == r,:);
-    burstSize{r} = bursts(ismember(bursts(:,1), ripples.timestamps(ripBurstSize==2,1)),:);
+    burstSize{r} = bursts(ismember(bursts(:,1), ripples.timestamps(ripBurstSize==r,1)),:);
 end
 
 % check
@@ -181,12 +184,30 @@ if all(burstPlace{1}(:,1) == bursts(:,1))
     fprintf('Ripple placement is correct!\n')
 end
 
+%% Ripple Burst Index and Size -> structure!
+rippleBurst = struct('solos', ripBurstIdx == 0,...
+                     'bursts', ripBurstIdx ~= 0, ...
+                     'duos', ripBurstSize == 2,...
+                     'trios', ripBurstSize == 3, ...
+                     'quartets', ripBurstSize == 4, ...
+                     'quintets', ripBurstSize == 5, ...
+                     'first', ripBurstIdx == 1, ...
+                     'second', ripBurstIdx == 2, ...
+                     'third', ripBurstIdx == 3, ...
+                     'fourth', ripBurstIdx == 4, ...
+                     'fifth', ripBurstIdx == 5, ...
+                     'last', ripBurstRevIdx == 1, ...
+                     'notLast', ripBurstRevIdx ~= 1 | 0);
 
 %% Mean Stimulation Time
 stimOnOff = photometry_HPC_sync_concat.timestamps(photometry_HPC_sync_concat.barcodesOnOff);
 stimDur = stimOnOff(:,2) - stimOnOff(:,1);
 
-%% ETA but in time not index space
+%% Event Triggered Averages
+% build a -5 to +5 time window around each ripple event, evenly sampled at
+% 130 Hz (photometry sampling rate), and interpolate at the windowed
+% samples from the photometry data to build the event-triggered average DA
+% trace.
 
 % Parameters
 fs = 130;           % LFP sampling rate (Hz)
@@ -196,8 +217,9 @@ post = 5;           % seconds after spike
 % Choose Events
 N = split(num2str(1:numel(burstPlace)));
 % events2plot = {'bursts', 'solos'}; 
-% events2plot = N;
-events2plot = {'solos','1','2','3'};
+events2plot = {'solos','duos','trios'};
+% events2plot = {'solos','1','2','3'};
+% events2plot = {'solos','1','last'};
 % events2plot = {'long stim','short stim'};
 % events2plot = {'stims','nosepokes'};
 % events2plot = {'rewarded pokes', 'unrewarded pokes'};
@@ -242,25 +264,36 @@ for e = 1:numel(events2plot)
         case "unrewarded pokes"
             eventTimes_hpc = behavTrials.timestamps(~logical(behavTrials.reward_outcome));
             eventTimes_str = behavTrials.timestamps(~logical(behavTrials.reward_outcome));
-        case "solos"
-            eventTimes_hpc = solos(:,1);
-            eventTimes_str = solos(:,1);
-        case "bursts"
-            eventTimes_hpc = bursts(:,1);
-            eventTimes_str = bursts(:,1);
-        case "last"
-            eventTimes_hpc = burstPlaceRev{1}(:,1);
-            eventTimes_str = burstPlaceRev{1}(:,1);
+        case "first in duos"
+            idx = rippleBurst.first & rippleBurst.duos;
+            eventTimes_hpc = ripples.timestamps(idx,1);
+            eventTimes_str = ripples.timestamps(idx,1);
+        case "second in duos"
+            idx = rippleBurst.second & rippleBurst.duos;
+            eventTimes_hpc = ripples.timestamps(idx,1);
+            eventTimes_str = ripples.timestamps(idx,1);
+        case "first in trios"
+            idx = rippleBurst.first & rippleBurst.trios;
+            eventTimes_hpc = ripples.timestamps(idx,1);
+            eventTimes_str = ripples.timestamps(idx,1);
+        case "second in trios"
+            idx = rippleBurst.second & rippleBurst.trios;
+            eventTimes_hpc = ripples.timestamps(idx,1);
+            eventTimes_str = ripples.timestamps(idx,1);
+        case "third in trios"
+            idx = rippleBurst.third & rippleBurst.trios;
+            eventTimes_hpc = ripples.timestamps(idx,1);
+            eventTimes_str = ripples.timestamps(idx,1);
         otherwise
-            if isempty(str2num(event))
+            if isfield(rippleBurst, event)
+                eventTimes_hpc = ripples.timestamps(rippleBurst.(event),1);
+                eventTimes_str = ripples.timestamps(rippleBurst.(event),1);
+            else
                 fprintf('%s is not a registered event type. Halting.\n',event);
                 break;
-            else
-                num = str2num(event);
-                eventTimes_hpc = burstPlace{num}(:,1);
-                eventTimes_str = burstPlace{num}(:,1);
             end
     end
+    
     disp('Extracting event windows...')
     % Preallocate
     etaMatrixHPC = nan(numel(eventTimes_hpc), winLength);
@@ -375,14 +408,68 @@ for e = 1:numel(events2plot)
 end
 disp('done!')
 
+%% Ripple Stats
+pyrCh = bz_GetLFP(ripples.detectorinfo.detectionchannel);
+ripLFP = bz_Filter(pyrCh.data,'passband',ripples.detectorinfo.detectionparms.passband);
+[maps,data,stats] = bz_RippleStats(ripLFP, pyrCh.timestamps,ripples);
+rippleStats = struct('maps',maps,'data',data','stats',stats);
+[~,name,~] = fileparts(sessionPaths{sesh});
+save(join([name,'.ripples.stats.mat']),"rippleStats");
+%%
+% ripple peaks
+f1 = figure(10); clf; hold on;
+f1.Units = 'normalized';
+f1.Position = [0 0.05 1 0.865];
+tiledlayout(5,12,'TileSpacing','tight','Padding','compact');
+sgtitle(sprintf('%s',name),'Interpreter','none');
+
+% >>>
+nexttile(1, [1 2]); hold on;
+IRI1 = ripples.timestamps(2:end,1) - ripples.timestamps(1:end-1,2);
+IRI1a = rmoutliers(IRI1);
+histogram(IRI1a,50,'DisplayName','mine')
+
+IRI2 = diff(ripples.timestamps(:,1));
+IRI2a = rmoutliers(IRI2);
+histogram(IRI2a,50,'DisplayName','lab')
+
+xlabel('Inter-Ripple Interval (s)')
+ylabel('SWR counts')
+legend('location','northeast')
+
+% >>>
+nexttile(13, [1 2]); hold on;
+iri = IRI1a(IRI1a>0);   % ensure positive
+nbins = 60;
+edges = logspace(log10(min(iri)/10), log10(max(iri)*10), nbins+1);
+[counts, edges] = histcounts(iri, edges);
+binWidths = diff(edges);
+pdf = counts ./ sum(counts) ./ binWidths;   % density normalization
+
+binCenters = sqrt(edges(1:end-1).*edges(2:end));  % geometric mean
+
+semilogx(binCenters, pdf, '-');
+xlabel('Inter-ripple interval');
+ylabel('Probability density');
+title('IRI PDF (log-time)');
+xscale('log')
 
 
+peakAmp_avg = [mean(data.peakAmplitude(rippleBurst.solos)),...
+                mean(data.peakAmplitude(rippleBurst.duos)),...
+                mean(data.peakAmplitude(rippleBurst.trios));...
+            mean(data.peakAmplitude(rippleBurst.first & rippleBurst.duos)),...
+                mean(data.peakAmplitude(rippleBurst.second & rippleBurst.duos)),...
+                nan;...
+            mean(data.peakAmplitude(rippleBurst.first & rippleBurst.trios)),...
+                mean(data.peakAmplitude(rippleBurst.second & rippleBurst.trios)),...
+                mean(data.peakAmplitude(rippleBurst.third & rippleBurst.trios))];
 
-
-
-
-
-
+peak_sem = [std(ripples.peaks(rippleBurst.solos)) / sqrt(sum(rippleBurst.solos)),...
+            std(ripples.peaks(rippleBurst.duos)) / sqrt(sum(rippleBurst.duos)),...
+            std(ripples.peaks(rippleBurst.trios)) / sqrt(sum(rippleBurst.trios))];
+% labels = {'solos','duos','trios','first in duos','second in duos'};
+% bar(labels,peakAmp_avg);
 
 
 
