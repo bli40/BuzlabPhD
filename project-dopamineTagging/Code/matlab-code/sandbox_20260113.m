@@ -721,6 +721,7 @@ purple = purple([20 50 80],:);
 
 figure(69); colorbar; colormap(orange);
 %% Master Plot
+[~,name,~] = fileparts(sessionPaths{sesh});
 % figure initiate
 f1 = figure(10); clf; hold on;
 f1.Units = 'normalized';
@@ -810,30 +811,6 @@ title('Ripple Duration')
 xticklabels({'solos','duos','trios'})
 ylabel('sec')
 
-%% >>> Burst Duration
-f1 = figure(10);
-nexttile(16); cla; hold on;
-solo = rippleStats.data.duration(rippleBurst.solos);
-duo = rippleBurst.burstTimes(rippleBurst.burstNum == 2,2) - rippleBurst.burstTimes(rippleBurst.burstNum == 2,1);
-trio = rippleBurst.burstTimes(rippleBurst.burstNum == 3,2) - rippleBurst.burstTimes(rippleBurst.burstNum == 3,1);
-
-plot(ones(size(solo)), solo, 'o','Color',[0.7 0.7 0.7],'HandleVisibility','off');
-plot(1, mean(solo),'o','color',blue(1,:),'MarkerFaceColor',blue(1,:),'DisplayName','solos');
-errorbar(1, mean(solo),std(solo),'color',blue(1,:))
-
-plot(2*ones(size(duo)), duo, 'o','Color',[0.7 0.7 0.7],'HandleVisibility','off');
-plot(2, mean(duo),'o','color',blue(2,:),'MarkerFaceColor',blue(2,:),'DisplayName','duos');
-errorbar(2, mean(duo),std(duo),'color',blue(2,:))
-
-plot(3*ones(size(trio)), trio, 'o','Color',[0.7 0.7 0.7],'HandleVisibility','off');
-plot(3, mean(trio),'o','color',blue(3,:),'MarkerFaceColor',blue(3,:),'DisplayName','trios');
-errorbar(3, mean(trio),std(trio),'color',blue(3,:))
-
-xlim([0.5 3.5])
-title('Burst Duration')
-xticklabels({'solos','duos','trios'})
-ylabel('sec')
-
 %% >>> Ripple Frequency
 f1 = figure(10);
 nexttile(15); cla; hold on;
@@ -857,6 +834,30 @@ xlim([0.5 3.5])
 title('Ripple Frequency')
 xticklabels({'solos','duos','trios'})
 ylabel('Hz')
+
+%% >>> Burst Duration
+f1 = figure(10);
+nexttile(16); cla; hold on;
+solo = rippleStats.data.duration(rippleBurst.solos);
+duo = rippleBurst.burstTimes(rippleBurst.burstNum == 2,2) - rippleBurst.burstTimes(rippleBurst.burstNum == 2,1);
+trio = rippleBurst.burstTimes(rippleBurst.burstNum == 3,2) - rippleBurst.burstTimes(rippleBurst.burstNum == 3,1);
+
+plot(ones(size(solo)), solo, 'o','Color',[0.7 0.7 0.7],'HandleVisibility','off');
+plot(1, mean(solo),'o','color',blue(1,:),'MarkerFaceColor',blue(1,:),'DisplayName','solos');
+errorbar(1, mean(solo),std(solo),'color',blue(1,:))
+
+plot(2*ones(size(duo)), duo, 'o','Color',[0.7 0.7 0.7],'HandleVisibility','off');
+plot(2, mean(duo),'o','color',blue(2,:),'MarkerFaceColor',blue(2,:),'DisplayName','duos');
+errorbar(2, mean(duo),std(duo),'color',blue(2,:))
+
+plot(3*ones(size(trio)), trio, 'o','Color',[0.7 0.7 0.7],'HandleVisibility','off');
+plot(3, mean(trio),'o','color',blue(3,:),'MarkerFaceColor',blue(3,:),'DisplayName','trios');
+errorbar(3, mean(trio),std(trio),'color',blue(3,:))
+
+xlim([0.5 3.5])
+title('Burst Duration')
+xticklabels({'solos','duos','trios'})
+ylabel('sec')
 
 %% >>> Histogram Ripple Duration
 f1 = figure(10);
@@ -951,7 +952,12 @@ xlabel('Time (s)')
 %% >>> ETA: solos, duos, trios hippocampus (sleep)
 % create color scheme
 f1 = figure(10);
+nexttile(5, [2 2]); delete(gca);
 nexttile(5, [2 2]); cla; hold on;
+solo = rippleStats.data.duration(rippleBurst.solos);
+duo = rippleBurst.burstTimes(rippleBurst.burstNum == 2,2) - rippleBurst.burstTimes(rippleBurst.burstNum == 2,1);
+trio = rippleBurst.burstTimes(rippleBurst.burstNum == 3,2) - rippleBurst.burstTimes(rippleBurst.burstNum == 3,1);
+
 sleep = ripples.timestamps(:,1) < photometry_HPC_sync_concat.epochs(2,1) | ...
         ripples.timestamps(:,1) > photometry_HPC_sync_concat.epochs(2,2);
 events2plot = {'solo','duos','trios'};
@@ -968,9 +974,18 @@ for e = 1:numel(events)
         'DisplayName',events2plot{e});
     x = [etaHPC.window, fliplr(etaHPC.window)];
     y = [etaHPC.avg + etaHPC.sem, fliplr(etaHPC.avg - etaHPC.sem)];
-    patch(x,y,blue(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
-    
+    patch(x,y,blue(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');    
 end
+patch([0 mean(solo) mean(solo) 0],...
+      [-0.2 -0.2 -0.17 -0.17], ...
+      blue(1,:),'EdgeColor','none','HandleVisibility','off');
+patch([0 mean(duo) mean(duo) 0],...
+      [-0.17 -0.17 -0.14 -0.14], ...
+      blue(2,:),'EdgeColor','none','HandleVisibility','off');
+patch([0 mean(trio) mean(trio) 0],...
+      [-0.14 -0.14 -0.11 -0.11], ...
+      blue(3,:),'EdgeColor','none','HandleVisibility','off');
+
 xlabel('Time from event (s)');
 ylabel('Fluorescence (z-score');
 title(sprintf('Ripple-Triggered Average\nHPC DA (sleep)'));
@@ -1169,21 +1184,144 @@ legend('location','best');
 set(gca,'children',flipud(get(gca,'children')))
 
 
-%% Re-create Robinson et al. 2025 large vs. small ripple analysis
+%% >>> Re-create Robinson et al. 2025 large vs. small ripple analysis
 % Possible control analysis. Antonio's group showed that large vs small
 % ripples had an effect on memory formation and PFC recruitment
-
 meanRipDur = mean(rippleStats.data.duration);
 meanRipAmp = mean(rippleStats.data.peakAmplitude);
+meanRipFrq = mean(rippleStats.data.peakFrequency);
+ripDurZ = zscore(rippleStats.data.duration);
+ripAmpZ = zscore(rippleStats.data.peakAmplitude);
+ripFrqZ = zscore(rippleStats.data.peakFrequency);
+large = ripDurZ > 0 & ripAmpZ > 0;
 
 
+nexttile(53); cla; hold on;
+scatter(ripDurZ(~large), ripAmpZ(~large),'.k')
+scatter(ripDurZ(large), ripAmpZ(large),'.b')
+xlabel('Duration (z-score)')
+ylabel('Amplitude (z-score')
+xl = xlim;
+yl = ylim;
+plot(xl,[0 0],'-r','LineWidth',0.5);
+plot([0 0],yl,'-r','LineWidth',0.5);
+
+nexttile(54); cla; hold on;
+scatter(ripDurZ(~large), ripFrqZ(~large),'.k')
+scatter(ripDurZ(large), ripFrqZ(large),'.b')
+xlabel('Duration (z-score)')
+ylabel('Frequency (z-score')
+
+nexttile(65); cla; hold on;
+scatter(ripAmpZ(~large), ripFrqZ(~large),'.k')
+scatter(ripAmpZ(large), ripFrqZ(large),'.b')
+xlabel('Amplitude (z-score)')
+ylabel('Frequency (z-score')
+
+nexttile(66); cla; hold on;
+meanSmall = mean(rippleStats.maps.ripples(~large,:),1);
+stdSmall = std(rippleStats.maps.ripples(~large),0,1);
+meanLarge = mean(rippleStats.maps.ripples(large,:),1);
+stdLarge = std(rippleStats.maps.ripples(large),0,1);
+t = 1:size(rippleStats.maps.ripples,2);
+
+plot(t,meanLarge,'-b','DisplayName','large')
+x = [t, fliplr(t)];
+y = [meanLarge + stdLarge, fliplr(meanLarge - stdLarge)];
+patch(x,y,'b','FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
 
 
+plot(t+t(end),meanSmall,'-k','DisplayName','small')
+x = [t+t(end), fliplr(t+t(end))];
+y = [meanSmall + stdSmall, fliplr(meanSmall - stdSmall)];
+patch(x,y,'k','FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
+xticks([94, 281])
+xticklabels({'large','small'});
+yticklabels('');
 
+%% >>> hippocampus DA response vs ripple size
+f1 = figure(10);
+nexttile(55, [2 2]); delete(gca);
+nexttile(55, [2 2]); cla; hold on;
+large = ripDurZ > 0 & ripAmpZ > 0;
 
+events2plot = {'large','small'};
+events = {ripples.timestamps(rippleBurst.solos & large,1),...
+          ripples.timestamps(rippleBurst.solos & ~large,1)};
+data = photometry_HPC_sync_concat.grabDA_z;
+timestamps = photometry_HPC_sync_concat.timestamps;
+for e = 1:numel(events)  
+    etaHPC = byl_GetETA(events{e},data,timestamps,'frequency',130);
 
+    % Plot
+    plot(etaHPC.window, etaHPC.avg, 'color', green(e,:), 'LineWidth', 2,...
+        'DisplayName',events2plot{e});
+    x = [etaHPC.window, fliplr(etaHPC.window)];
+    y = [etaHPC.avg + etaHPC.sem, fliplr(etaHPC.avg - etaHPC.sem)];
+    patch(x,y,green(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
+end
+xlabel('Time from event (s)');
+ylabel('Fluorescence (z-score');
+title(sprintf('Ripple-Triggered Average\nHPC DA (behavior)'));
+grid on;
+ylim([-0.2 1])
+legend('location','best');
+set(gca,'children',flipud(get(gca,'children')))
 
+%% >>> 
+f1 = figure(10);
+nexttile(57,[2 2]); delete(gca);
+nexttile(57,[2 2]); cla; hold on;
 
+solo = rippleBurst.soloTimes(:,2) - rippleBurst.soloTimes(:,1);
+duo = rippleBurst.burstTimes(rippleBurst.burstNum == 2,2) - rippleBurst.burstTimes(rippleBurst.burstNum == 2,1);
+trio = rippleBurst.burstTimes(rippleBurst.burstNum == 3,2) - rippleBurst.burstTimes(rippleBurst.burstNum == 3,1);
+
+data = photometry_HPC_sync_concat.grabDA_z;
+times = photometry_HPC_sync_concat.timestamps;
+
+etaSolo = byl_GetETA(rippleBurst.soloTimes(:,1),data,times,'frequency',130);
+etaDuo = byl_GetETA(rippleBurst.burstTimes(rippleBurst.burstNum == 2,1),data,times,'frequency',130);
+etaTrio = byl_GetETA(rippleBurst.burstTimes(rippleBurst.burstNum == 3,1),data,times,'frequency',130);
+%%
+maxPerSolo = max(etaSolo.chunks,[],2);
+[row col] = find(etaSolo.chunks == maxPerSolo)
+%% >> ripple rate around nosepokes
+% f1 = figure(10);
+% nexttile(59,[2 2]); cla; hold on;
+% dt = 1/130;
+% time = photometry_HPC_sync_concat.timestamps;
+% rips = histcounts(ripples.timestamps(:,1), [time; time(end)+dt]) / dt;
+% 
+% sigma = 1; % seconds
+% tk = -4*sigma:dt:4*sigma;
+% g = exp(-tk.^2/(2*sigma^2));
+% g = g / sum(g*dt); 
+% rate_smooth = conv(rips, g, 'same');
+% 
+% events2plot = {'rewarded','unrewarded'};
+% events = {behavTrials.timestamps(logical(behavTrials.reward_outcome)),...
+%           behavTrials.timestamps(~logical(behavTrials.reward_outcome))};
+% data = rate_smooth;
+% timestamps = photometry_HPC_sync_concat.timestamps;
+% for e = 1:numel(events)  
+%     etaHPC = byl_GetETA(events{e},data,timestamps,'frequency',130);
+% 
+%     % Plot
+%     plot(etaHPC.window, etaHPC.avg, 'color', purple(e,:), 'LineWidth', 2,...
+%         'DisplayName',events2plot{e});
+%     x = [etaHPC.window, fliplr(etaHPC.window)];
+%     y = [etaHPC.avg + etaHPC.sem, fliplr(etaHPC.avg - etaHPC.sem)];
+%     patch(x,y,purple(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
+% 
+% 
+% end
+% xlabel('Time from event (s)');
+% ylabel('Fluorescence (z-score');
+% title(sprintf('Poke/Stim-Triggered Average\nHPC DA (behavior)'));
+% grid on;
+% legend('location','best');
+% set(gca,'children',flipud(get(gca,'children')))
 
 
 

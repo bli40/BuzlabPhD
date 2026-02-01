@@ -53,7 +53,7 @@ end
 cd(sessionPaths{sesh});
 
 %% Initialize
-sesh = 1;
+sesh = 3;
 
 cd(sessionPaths{sesh});
 d = (dir(fullfile(sessionPaths{sesh},'N*.session.mat')));
@@ -205,7 +205,8 @@ rippleBurst = struct('solos', ripBurstIdx == 0,...
                      'notLast', ripBurstRevIdx ~= 1 | 0, ...
                      'burstIndex', ripBurstNum, ...
                      'burstNum', burstRipNum, ...
-                     'burstTimes',bursts);
+                     'burstTimes',bursts,...
+                     'soloTimes',solos);
 
 %% Mean Stimulation Time
 stimOnOff = photometry_HPC_sync_concat.timestamps(photometry_HPC_sync_concat.barcodesOnOff);
