@@ -38,15 +38,15 @@ noiseCh = 111;
                                      'savemat',true, ...
                                      'durations',[30 200], ...
                                      'passband',[130 250]);
+%% 6. Ripple Stats
+pyrCh = bz_GetLFP(ripples.detectorinfo.detectionchannel);
+ripLFP = bz_Filter(pyrCh.data,'passband',ripples.detectorinfo.detectionparms.passband);
+[maps,data,stats] = bz_RippleStats(ripLFP, pyrCh.timestamps,ripples);
+rippleStats = struct('maps',maps,'data',data','stats',stats);
+[~,name,~] = fileparts(sessionPaths{sesh});
+save(join([name,'.ripples.stats.mat']),"rippleStats");
 
-%% 4. Extract sharp wave ripples (no noise channel)
-lfp_rip = bz_GetLFP(121);
-lfp_noise = bz_GetLFP(127);
-
-[ripples] = bz_FindRipples(lfp_rip.data, lfp_rip.timestamps,'savemat',true,'durations',[30 200],'passband',[130 250]); % lfp_rip.data
-
-save("N17_250520_sess22.ripples.events.mat", "ripples")
-%% 5. Sleep score
+%% 6. Sleep score
 % badChannels = [24:38 48:63]; %N7
 % badChannels = [0:3 15:18 21:30 43 50 95 97]; %N9
 % badChannels = [0:3 15:18 21:30 41 43 46 47 50 52 95 97]; %N15
@@ -56,5 +56,5 @@ badChannels = [74]; %N14
 SleepScoreMaster(pwd,'stickytrigger',true,'rejectChannels',badChannels); % try to sleep score
 % SleepScoreMaster_km(pwd,'stickytrigger',true,'rejectChannels',badChannels); % try to sleep score
 
-%% 6. Cell Explorer
+%% 7. Cell Explorer
 cell_metrics = ProcessCellMetrics('manualAdjustMonoSyn',false,'forceReload',true,'submitToDatabase',false,'showGUI',false);

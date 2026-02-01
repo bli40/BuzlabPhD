@@ -21,6 +21,12 @@ load(fullfile(basePath,'\e13_26m1_210913.cell_metrics.cellinfo.mat'));
 % (5) Perform multi-taper estimates of mua time-frequency (done)
 % (6) Find MUA oscilations averaged over trials
 
+%% To-Do
+% velocity filter the LFP times
+% perform filtering and averaging over running times
+% estimate instantaneous spike phase relative to theta using Hilbert Trans
+% calculate spectrogram of spike phases for each cell
+
 %% Multitaper!!! Testing for general knowledge
 figure(10);
 [spectrogram, t, f] = MTSpectrogram(double(lfp.data), ...
@@ -268,7 +274,7 @@ for unit = 1:spikes.numcells
     spikePhase = interp1(lfp.timestamps, instantPhase, spikes.times{unit});
     spikePhase= wrapTo2Pi(spikePhase);
     spikeVels = interp1(behavior.timestamps, wholeSpeed, spikes.times{unit});
-    fastEnough = spikeVels >= 10;
+    fastEnough = spikeVels >= 5;
 
     [right,~,~] = InIntervals(spikeTimes,rightInts.state1);
     [left,~,~] = InIntervals(spikeTimes,leftInts.state1);

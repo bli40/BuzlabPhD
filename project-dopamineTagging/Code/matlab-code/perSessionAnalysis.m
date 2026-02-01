@@ -1,8 +1,10 @@
 %% Load Data and Check if Preprocessing is Complete
 clear all;
 close all;
+% lab PC-Gergely directory structure:
 % addpath('C:\Users\Gergely\Documents\Brian\BuzlabPhD\project-dopamineTagging\Code\matlab-code');
 % directory = readtable('C:\Users\Gergely\Documents\Brian\Data\project-dopamineTagging-data\data-directory.xlsx');
+% personal laptop / PC directory structure:
 addpath("C:\Users\brian\BuzlabPhD\project-dopamineTagging\Code\matlab-code\");
 directory = readtable("\\research-cifs.nyumc.org\research\buzsakilab\Buzsakilabspace\LabShare\BrianLi\project-dopamine-tagging\data-directories.xlsx");
 sessions2analyze = logical(directory.Use);
@@ -170,6 +172,7 @@ for i = 1:max(unique(ripBurstNum))
     ripBurstIdx(ripBurstNum == i) = cumsum(cc(ripBurstNum == i));
     ripBurstRevIdx(ripBurstNum == i) = flip(cumsum(cc(ripBurstNum == i)));
     ripBurstSize(ripBurstNum == i) = sum(cc(ripBurstNum == i));
+    burstRipNum(i,:) = ripBurstSize(find(ripBurstNum == i,1,'first'));
 end
 
 for r = 1:max(ripBurstIdx)
@@ -185,6 +188,8 @@ if all(burstPlace{1}(:,1) == bursts(:,1))
 end
 
 %% Ripple Burst Index and Size -> structure!
+
+
 rippleBurst = struct('solos', ripBurstIdx == 0,...
                      'bursts', ripBurstIdx ~= 0, ...
                      'duos', ripBurstSize == 2,...
@@ -197,7 +202,10 @@ rippleBurst = struct('solos', ripBurstIdx == 0,...
                      'fourth', ripBurstIdx == 4, ...
                      'fifth', ripBurstIdx == 5, ...
                      'last', ripBurstRevIdx == 1, ...
-                     'notLast', ripBurstRevIdx ~= 1 | 0);
+                     'notLast', ripBurstRevIdx ~= 1 | 0, ...
+                     'burstIndex', ripBurstNum, ...
+                     'burstNum', burstRipNum, ...
+                     'burstTimes',bursts);
 
 %% Mean Stimulation Time
 stimOnOff = photometry_HPC_sync_concat.timestamps(photometry_HPC_sync_concat.barcodesOnOff);
@@ -208,11 +216,6 @@ stimDur = stimOnOff(:,2) - stimOnOff(:,1);
 % 130 Hz (photometry sampling rate), and interpolate at the windowed
 % samples from the photometry data to build the event-triggered average DA
 % trace.
-
-% Parameters
-fs = 130;           % LFP sampling rate (Hz)
-pre  = 5;           % seconds before spike
-post = 5;           % seconds after spike
 
 % Choose Events
 N = split(num2str(1:numel(burstPlace)));
@@ -226,16 +229,17 @@ events2plot = {'solos','duos','trios'};
 % events2plot = {'gibberish'};
 traces2pull = {'z-score'};      % z-score, dF/F
 
-% Define relative time axis (not samples)
-tWind = -pre : 1/fs : post;
-winLength = numel(tWind);
-
 % stack plots or not
 stack = true;
 
 % create color scheme
-str_col = autumn(5);
-hpc_col = winter(5);
+str_col = customcolormap([0 0.75 1],[1 0.9 0.9; 0.5 0 0; 0.1 0 0],101);
+str_col = str_col([20 50 80],:);
+hpc_col = customcolormap([0 0.75 1],[0.9 0.9 1; 0 0 0.5; 0 0 0.1],101);
+hpc_col = hpc_col([20 50 80],:);
+
+% str_col = autumn(4);
+% hpc_col = winter(4);
 
 for e = 1:numel(events2plot)
     % for a = 1:numel(traces2pull)
@@ -295,68 +299,15 @@ for e = 1:numel(events2plot)
     end
     
     disp('Extracting event windows...')
-    % Preallocate
-    etaMatrixHPC = nan(numel(eventTimes_hpc), winLength);
-    etaMatrixSTR = nan(numel(eventTimes_str), winLength);
-    
-    % Interpolate DA traces in time space
-    tHPC = photometry_HPC_sync_concat.timestamps;
-    tSTR = photometry_STR_sync_concat.timestamps;
-    
-    switch trace
-        case 'z-score'
-            xHPC = photometry_HPC_sync_concat.grabDA_z;
-            xSTR = photometry_STR_sync_concat.grabDA_z;
-            ylab = 'mean DA (z-score)';
-        case 'dF/F'
-            xHPC = photometry_HPC_sync_concat.grabDA_df;
-            xSTR = photometry_STR_sync_concat.grabDA_df;
-            ylab = 'mean DA (dF/F)';
-        otherwise
-            fprintf('%s is not a registered event type. Halting.\n',event);
-            break;
-    end
 
-    % --- HPC ---
-    keepHPC = false(numel(eventTimes_hpc),1);
-    
-    for i = 1:numel(eventTimes_hpc)
-        tSample = eventTimes_hpc(i) + tWind;
-    
-        if tSample(1) < tHPC(1) || tSample(end) > tHPC(end)
-            continue
-        end
-    
-        etaMatrixHPC(i,:) = interp1(tHPC, xHPC, tSample, 'linear');
-        keepHPC(i) = true;
-    end
-    
-    etaMatrixHPC = etaMatrixHPC(keepHPC,:);
-    
-    % --- STR ---
-    keepSTR = false(numel(eventTimes_str),1);
-    
-    for i = 1:numel(eventTimes_str)
-        tSample = eventTimes_str(i) + tWind;
-    
-        if tSample(1) < tSTR(1) || tSample(end) > tSTR(end)
-            continue
-        end
-    
-        etaMatrixSTR(i,:) = interp1(tSTR, xSTR, tSample, 'linear');
-        keepSTR(i) = true;
-    end
-    
-    etaMatrixSTR = etaMatrixSTR(keepSTR,:);
-    
-    
-    % Event-triggered average
-    etaHPC = mean(etaMatrixHPC, 1);
-    etaHPC_sem = std(etaMatrixHPC, 0, 1) / sqrt(size(etaMatrixHPC,1)-1);
-    etaSTR = mean(etaMatrixSTR, 1);
-    etaSTR_sem = std(etaMatrixSTR, 0, 1) / sqrt(size(etaMatrixSTR,1)-1);
-    
-    
+    etaHPC = byl_GetETA(eventTimes_hpc, ...
+        photometry_HPC_sync_concat.grabDA_z, ...
+        photometry_HPC_sync_concat.timestamps, ...
+        'frequency',130);
+    etaSTR = byl_GetETA(eventTimes_str, ...
+        photometry_STR_sync_concat.grabDA_z, ...
+        photometry_STR_sync_concat.timestamps, ...
+        'frequency',130);
     % Plot
     [~,name,~] = fileparts(sessionPaths{sesh});
 
@@ -375,13 +326,13 @@ for e = 1:numel(events2plot)
     sgtitle(sprintf('%s',name),'Interpreter','none');
 
     nexttile(1); hold on;
-    plot(tWind, etaHPC, 'color', hpc_col(e,:), 'LineWidth', 2,...
+    plot(etaHPC.window, etaHPC.avg, 'color', hpc_col(e,:), 'LineWidth', 2,...
         'DisplayName',events2plot{e});
-    x = [tWind, fliplr(tWind)];
-    y = [etaHPC + etaHPC_sem, fliplr(etaHPC - etaHPC_sem)];
+    x = [etaHPC.window, fliplr(etaHPC.window)];
+    y = [etaHPC.avg + etaHPC.sem, fliplr(etaHPC.avg - etaHPC.sem)];
     patch(x,y,hpc_col(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
     YL1 = ylim;
-    % plot([0 0], YL1,'-k','LineWidth',0.5);
+    plot([0 0], YL1,'-k','LineWidth',0.5,'HandleVisibility','off');
     xlabel('Time from event (s)');
     ylabel(ylab);
     title(sprintf('Event-Triggered Average\nHPC DA'));
@@ -389,13 +340,13 @@ for e = 1:numel(events2plot)
     legend();
     
     nexttile(2); hold on;
-    plot(tWind, etaSTR, 'color', str_col(e,:), 'LineWidth', 2,...
+    plot(etaSTR.window, etaSTR.avg, 'color', str_col(e,:), 'LineWidth', 2,...
         'DisplayName',events2plot{e});
-    x = [tWind, fliplr(tWind)];
-    y = [etaSTR + etaSTR_sem, fliplr(etaSTR - etaSTR_sem)];
+    x = [etaSTR.window, fliplr(etaSTR.window)];
+    y = [etaSTR.avg + etaSTR.sem, fliplr(etaSTR.avg - etaSTR.sem)];
     patch(x,y,str_col(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
     YL2 = ylim;
-    % plot([0 0], YL2,'-k','LineWidth',0.5);
+    plot([0 0], YL2,'-k','LineWidth',0.5,'HandleVisibility','off');
     xlabel('Time from event (s)');
     ylabel(ylab);
     title(sprintf('Event-Triggered Average\nSTR DA'));
@@ -408,68 +359,8 @@ for e = 1:numel(events2plot)
 end
 disp('done!')
 
-%% Ripple Stats
-pyrCh = bz_GetLFP(ripples.detectorinfo.detectionchannel);
-ripLFP = bz_Filter(pyrCh.data,'passband',ripples.detectorinfo.detectionparms.passband);
-[maps,data,stats] = bz_RippleStats(ripLFP, pyrCh.timestamps,ripples);
-rippleStats = struct('maps',maps,'data',data','stats',stats);
-[~,name,~] = fileparts(sessionPaths{sesh});
-save(join([name,'.ripples.stats.mat']),"rippleStats");
 %%
-% ripple peaks
-f1 = figure(10); clf; hold on;
-f1.Units = 'normalized';
-f1.Position = [0 0.05 1 0.865];
-tiledlayout(5,12,'TileSpacing','tight','Padding','compact');
-sgtitle(sprintf('%s',name),'Interpreter','none');
 
-% >>>
-nexttile(1, [1 2]); hold on;
-IRI1 = ripples.timestamps(2:end,1) - ripples.timestamps(1:end-1,2);
-IRI1a = rmoutliers(IRI1);
-histogram(IRI1a,50,'DisplayName','mine')
-
-IRI2 = diff(ripples.timestamps(:,1));
-IRI2a = rmoutliers(IRI2);
-histogram(IRI2a,50,'DisplayName','lab')
-
-xlabel('Inter-Ripple Interval (s)')
-ylabel('SWR counts')
-legend('location','northeast')
-
-% >>>
-nexttile(13, [1 2]); hold on;
-iri = IRI1a(IRI1a>0);   % ensure positive
-nbins = 60;
-edges = logspace(log10(min(iri)/10), log10(max(iri)*10), nbins+1);
-[counts, edges] = histcounts(iri, edges);
-binWidths = diff(edges);
-pdf = counts ./ sum(counts) ./ binWidths;   % density normalization
-
-binCenters = sqrt(edges(1:end-1).*edges(2:end));  % geometric mean
-
-semilogx(binCenters, pdf, '-');
-xlabel('Inter-ripple interval');
-ylabel('Probability density');
-title('IRI PDF (log-time)');
-xscale('log')
-
-
-peakAmp_avg = [mean(data.peakAmplitude(rippleBurst.solos)),...
-                mean(data.peakAmplitude(rippleBurst.duos)),...
-                mean(data.peakAmplitude(rippleBurst.trios));...
-            mean(data.peakAmplitude(rippleBurst.first & rippleBurst.duos)),...
-                mean(data.peakAmplitude(rippleBurst.second & rippleBurst.duos)),...
-                nan;...
-            mean(data.peakAmplitude(rippleBurst.first & rippleBurst.trios)),...
-                mean(data.peakAmplitude(rippleBurst.second & rippleBurst.trios)),...
-                mean(data.peakAmplitude(rippleBurst.third & rippleBurst.trios))];
-
-peak_sem = [std(ripples.peaks(rippleBurst.solos)) / sqrt(sum(rippleBurst.solos)),...
-            std(ripples.peaks(rippleBurst.duos)) / sqrt(sum(rippleBurst.duos)),...
-            std(ripples.peaks(rippleBurst.trios)) / sqrt(sum(rippleBurst.trios))];
-% labels = {'solos','duos','trios','first in duos','second in duos'};
-% bar(labels,peakAmp_avg);
 
 
 
