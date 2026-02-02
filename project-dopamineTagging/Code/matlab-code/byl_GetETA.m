@@ -60,7 +60,7 @@ p = inputParser;
 addParameter(p,'durations',[-5 5],@isnumeric)
 addParameter(p,'frequency',1250,@isnumeric)
 addParameter(p,'show','off',@isstr)
-addParameter(p,'plotType',2,@isnumeric)
+addParameter(p,'normalization','none',@isstr)
 parse(p,varargin{:})
 
 % assign parameters (either defaults or given)
@@ -70,7 +70,7 @@ tSeries = timestamps;
 durations = p.Results.durations;
 frequency = p.Results.frequency;
 show = p.Results.show;
-plotType = p.Results.plotType;
+norm = p.Results.normalization;
 
 % Parameters
 fs = frequency;           % LFP sampling rate (Hz)
@@ -98,18 +98,27 @@ end
     
 etaMatrix = etaMatrix(keepEvent,:);
 tSampMatrix = tSampMatrix(keepEvent,:);
-  
+
+
+
 % Event-triggered average
 eta_avg = mean(etaMatrix, 1);
 eta_std = std(etaMatrix, 0, 1);
 eta_sem = eta_std / sqrt(size(etaMatrix,1)-1);
+
+if ~strcmp(norm, 'none')
+    normedMat = normalize(etaMatrix,2,norm);
+    normedAvg = mean(normedMat,1);
+end
 
 eta = struct('avg',eta_avg, ...
              'std',eta_std, ...
              'sem',eta_sem, ...
              'window',tWind, ...
              'chunks',etaMatrix, ...
-             'timestamps',tSampMatrix);
+             'timestamps',tSampMatrix, ...
+             'normChunks',normedMat, ...
+             'normAvg',normedAvg);
 return
 
     

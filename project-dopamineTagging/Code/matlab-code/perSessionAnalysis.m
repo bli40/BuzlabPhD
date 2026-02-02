@@ -88,47 +88,47 @@ load(fullfile(d(1).folder, d(1).name))
 
 
 %% Events and Photometry
-events_possible = {'Ripples','Stims','Nosepoke','Rewarded Poke', 'Unrewarded Poke'};
-events_name = {'Ripples','Stims','Nosepoke','Rewarded Poke'};
-events_list = {ripples.timestamps(:,1), ripples.timestamps(:,1);...
-               photometry_HPC_sync_concat.timestamps(photometry_HPC_sync_concat.barcodesOn),...
-                    photometry_STR_sync_concat.timestamps(photometry_STR_sync_concat.barcodesOn);...
-               behavTrials.timestamps, behavTrials.timestamps;...
-               behavTrials.timestamps(logical(behavTrials.reward_outcome)),behavTrials.timestamps(logical(behavTrials.reward_outcome))};
-
-
-for e = 1:size(events_list,1)
-    events_hpc = events_list{e,1};
-    events_str = events_list{e,2};
-
-    F1 = figure(e); clf;
-    F1.Position = [300+(20*e) 300+(20*e) 1000 500];
-    subplot(2,1,1);  hold on;
-    plot(events_hpc, ones(size(events_hpc)),'|k','LineWidth',0.5,'MarkerSize',20)
-    plot(photometry_HPC_sync_concat.timestamps,photometry_HPC_sync_concat.grabDA_df)
-    YL = ylim;
-    epochs = photometry_HPC_sync_concat.epochs;
-    x = [epochs(2,1) epochs(2,1) epochs(2,2) epochs(2,2)];
-    y = [YL flip(YL)];
-    patch(x, y, [0.7 0.7 0.7],'EdgeColor','none','FaceAlpha',0.5)
-    title(sprintf('%s and hippocampus dopamine over whole session',events_name{e}))
-    set(gca,'children',flipud(get(gca,'children')))
-    xlabel('Time (s)')
-    ylabel('z-score')
-    
-    subplot(2,1,2); hold on;
-    plot(events_str, ones(size(events_str)),'|k','LineWidth',0.5,'MarkerSize',20)
-    plot(photometry_STR_sync_concat.timestamps,photometry_STR_sync_concat.grabDA_df)
-    YL = ylim;
-    epochs = photometry_STR_sync_concat.epochs;
-    x = [epochs(2,1) epochs(2,1) epochs(2,2) epochs(2,2)];
-    y = [YL flip(YL)];
-    patch(x, y, [0.7 0.7 0.7],'EdgeColor','none','FaceAlpha',0.5)
-    title(sprintf('%s and striatum dopamine over whole session', events_name{e}))
-    set(gca,'children',flipud(get(gca,'children')))
-    xlabel('Time (s)')
-    ylabel('z-score')
-end
+% events_possible = {'Ripples','Stims','Nosepoke','Rewarded Poke', 'Unrewarded Poke'};
+% events_name = {'Ripples','Stims','Nosepoke','Rewarded Poke'};
+% events_list = {ripples.timestamps(:,1), ripples.timestamps(:,1);...
+%                photometry_HPC_sync_concat.timestamps(photometry_HPC_sync_concat.barcodesOn),...
+%                     photometry_STR_sync_concat.timestamps(photometry_STR_sync_concat.barcodesOn);...
+%                behavTrials.timestamps, behavTrials.timestamps;...
+%                behavTrials.timestamps(logical(behavTrials.reward_outcome)),behavTrials.timestamps(logical(behavTrials.reward_outcome))};
+% 
+% 
+% for e = 1:size(events_list,1)
+%     events_hpc = events_list{e,1};
+%     events_str = events_list{e,2};
+% 
+%     F1 = figure(e); clf;
+%     F1.Position = [300+(20*e) 300+(20*e) 1000 500];
+%     subplot(2,1,1);  hold on;
+%     plot(events_hpc, ones(size(events_hpc)),'|k','LineWidth',0.5,'MarkerSize',20)
+%     plot(photometry_HPC_sync_concat.timestamps,photometry_HPC_sync_concat.grabDA_df)
+%     YL = ylim;
+%     epochs = photometry_HPC_sync_concat.epochs;
+%     x = [epochs(2,1) epochs(2,1) epochs(2,2) epochs(2,2)];
+%     y = [YL flip(YL)];
+%     patch(x, y, [0.7 0.7 0.7],'EdgeColor','none','FaceAlpha',0.5)
+%     title(sprintf('%s and hippocampus dopamine over whole session',events_name{e}))
+%     set(gca,'children',flipud(get(gca,'children')))
+%     xlabel('Time (s)')
+%     ylabel('z-score')
+% 
+%     subplot(2,1,2); hold on;
+%     plot(events_str, ones(size(events_str)),'|k','LineWidth',0.5,'MarkerSize',20)
+%     plot(photometry_STR_sync_concat.timestamps,photometry_STR_sync_concat.grabDA_df)
+%     YL = ylim;
+%     epochs = photometry_STR_sync_concat.epochs;
+%     x = [epochs(2,1) epochs(2,1) epochs(2,2) epochs(2,2)];
+%     y = [YL flip(YL)];
+%     patch(x, y, [0.7 0.7 0.7],'EdgeColor','none','FaceAlpha',0.5)
+%     title(sprintf('%s and striatum dopamine over whole session', events_name{e}))
+%     set(gca,'children',flipud(get(gca,'children')))
+%     xlabel('Time (s)')
+%     ylabel('z-score')
+% end
 
 %% Find Ripples - Solos and Bursts
 firstPass = ripples.timestamps;
@@ -217,6 +217,7 @@ stimDur = stimOnOff(:,2) - stimOnOff(:,1);
 % samples from the photometry data to build the event-triggered average DA
 % trace.
 
+%{
 % Choose Events
 N = split(num2str(1:numel(burstPlace)));
 % events2plot = {'bursts', 'solos'}; 
@@ -358,6 +359,7 @@ for e = 1:numel(events2plot)
     
 end
 disp('done!')
+%}
 
 %% Custom Color Map
 red = customcolormap([0 0.5 1],[1 1 1; 0.5 0 0; 0 0 0],101);

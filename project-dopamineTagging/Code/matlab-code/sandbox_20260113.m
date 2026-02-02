@@ -705,30 +705,6 @@ end
 disp('done!')
 
 
-
-
-
-%% >>> 
-solo = rippleBurst.soloTimes(:,2) - rippleBurst.soloTimes(:,1);
-duo = rippleBurst.burstTimes(rippleBurst.burstNum == 2,2) - rippleBurst.burstTimes(rippleBurst.burstNum == 2,1);
-trio = rippleBurst.burstTimes(rippleBurst.burstNum == 3,2) - rippleBurst.burstTimes(rippleBurst.burstNum == 3,1);
-
-data = photometry_HPC_sync_concat.grabDA_z;
-times = photometry_HPC_sync_concat.timestamps;
-
-etaSolo = byl_GetETA(rippleBurst.soloTimes(:,1),data,times,'frequency',130);
-etaDuo = byl_GetETA(rippleBurst.burstTimes(rippleBurst.burstNum == 2,1),data,times,'frequency',130);
-etaTrio = byl_GetETA(rippleBurst.burstTimes(rippleBurst.burstNum == 3,1),data,times,'frequency',130);
-%%
-perSolo = mean(etaSolo.chunks(:,etaSolo.window >= 1 & etaSolo.window <= 2),2);
-perDuo = mean(etaDuo.chunks(:,etaDuo.window >= 1 & etaDuo.window <= 2),2);
-perTrio = mean(etaTrio.chunks(:,etaTrio.window >= 1 & etaTrio.window <= 2),2);
-
-figure(1); clf; hold on;
-scatter(solo, perSolo, '.','color', blue(1,:))
-scatter(duo, perDuo, '.','color', blue(2,:))
-scatter(trio, perTrio, '.','color', blue(3,:))
-
 %% Time series analysis
 
 fs = 130;
@@ -741,9 +717,54 @@ hif = 15;
 imagesc(t,f,abs(c))
 
 % [s,f,t] = stft(x,fs, Window=window, OverlapLength=noverlap, FFTLength=nfft);
+
+
+%% >>> 
+solo = rippleBurst.soloTimes(:,2) - rippleBurst.soloTimes(:,1);
+duo = rippleBurst.burstTimes(rippleBurst.burstNum == 2,2) - rippleBurst.burstTimes(rippleBurst.burstNum == 2,1);
+trio = rippleBurst.burstTimes(rippleBurst.burstNum == 3,2) - rippleBurst.burstTimes(rippleBurst.burstNum == 3,1);
+
+data = photometry_HPC_sync_concat.grabDA_z;
+times = photometry_HPC_sync_concat.timestamps;
+
+etaSolo = byl_GetETA(rippleBurst.soloTimes(:,1),data,times,'frequency',130,'normalization','zscore');
+etaDuo = byl_GetETA(rippleBurst.burstTimes(rippleBurst.burstNum == 2,1),data,times,'frequency',130,'normalization','zscore');
+etaTrio = byl_GetETA(rippleBurst.burstTimes(rippleBurst.burstNum == 3,1),data,times,'frequency',130,'normalization','zscore');
+
+
+%%
+figure(1); clf; hold on;
+plot(etaSolo.window, etaSolo.normAvg, 'Color',blue(1,:), 'LineWidth',2)
+plot(etaDuo.window, etaDuo.normAvg, 'Color',blue(2,:), 'LineWidth',2)
+plot(etaTrio.window, etaTrio.normAvg, 'Color',blue(3,:), 'LineWidth',2)
+
+plot(etaSolo.window, etaSolo.avg, 'Color',red(1,:));
+plot(etaDuo.window, etaDuo.avg, 'Color',red(2,:));
+plot(etaTrio.window, etaTrio.avg, 'Color',red(3,:));
+
+%%
+perSolo = mean(etaSolo.chunks(:,etaSolo.window >= 1 & etaSolo.window <= 2),2);
+perDuo = mean(etaDuo.chunks(:,etaDuo.window >= 1 & etaDuo.window <= 2),2);
+perTrio = mean(etaTrio.chunks(:,etaTrio.window >= 1 & etaTrio.window <= 2),2);
+
+figure(1); clf; hold on;
+scatter(solo, perSolo, '.','color', blue(1,:))
+scatter(duo, perDuo, '.','color', blue(2,:))
+scatter(trio, perTrio, '.','color', blue(3,:))
+
+%%
+
+for r = 1:size(etaDuo.chunks,1)
+    figure(2); clf; hold on;
+    plot(etaDuo.window, etaDuo.chunks(r,:),'b')
+    plot(etaDuo.window, etaDuo.normChunks(r,:),'r');
+    pause;
+end
+
 %%
 data = photometry_HPC_sync_concat.grabDA_z;
 events = struct();
+fs = 130;
 events(1).times = ripples.timestamps(rippleBurst.solos,1);
 events(1).label = 'solos';
 events(1).color = blue(1,:);
