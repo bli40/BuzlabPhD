@@ -301,11 +301,11 @@ for e = 1:numel(events2plot)
     
     disp('Extracting event windows...')
 
-    etaHPC = byl_GetETA(eventTimes_hpc, ...
+    etaHPC = byl_getETA(eventTimes_hpc, ...
         photometry_HPC_sync_concat.grabDA_z, ...
         photometry_HPC_sync_concat.timestamps, ...
         'frequency',130);
-    etaSTR = byl_GetETA(eventTimes_str, ...
+    etaSTR = byl_getETA(eventTimes_str, ...
         photometry_STR_sync_concat.grabDA_z, ...
         photometry_STR_sync_concat.timestamps, ...
         'frequency',130);
@@ -622,7 +622,7 @@ events = {ripples.timestamps(rippleBurst.solos & sleep,1),...
 data = photometry_HPC_sync_concat.grabDA_z;
 timestamps = photometry_HPC_sync_concat.timestamps;
 for e = 1:numel(events)  
-    etaHPC = byl_GetETA(events{e},data,timestamps,'frequency',130);
+    etaHPC = byl_getETA(events{e},data,timestamps,'frequency',130);
 
     % Plot
     plot(etaHPC.window, etaHPC.avg, 'color', blue(e,:), 'LineWidth', 2,...
@@ -660,7 +660,7 @@ events = {ripples.timestamps(rippleBurst.solos & ~sleep,1),...
 data = photometry_HPC_sync_concat.grabDA_z;
 timestamps = photometry_HPC_sync_concat.timestamps;
 for e = 1:numel(events)  
-    etaHPC = byl_GetETA(events{e},data,timestamps,'frequency',130);
+    etaHPC = byl_getETA(events{e},data,timestamps,'frequency',130);
 
     % Plot
     plot(etaHPC.window, etaHPC.avg, 'color', blue(e,:), 'LineWidth', 2,...
@@ -684,7 +684,7 @@ events = {photometry_HPC_sync_concat.timestamps(photometry_HPC_sync_concat.barco
 data = photometry_HPC_sync_concat.grabDA_z;
 timestamps = photometry_HPC_sync_concat.timestamps;
 for e = 1:numel(events)  
-    etaHPC = byl_GetETA(events{e},data,timestamps,'frequency',130);
+    etaHPC = byl_getETA(events{e},data,timestamps,'frequency',130);
 
     % Plot
     plot(etaHPC.window, etaHPC.avg, 'color', purple(e,:), 'LineWidth', 2,...
@@ -710,7 +710,7 @@ events = {behavTrials.timestamps(logical(behavTrials.reward_outcome)),...
 data = photometry_HPC_sync_concat.grabDA_z;
 timestamps = photometry_HPC_sync_concat.timestamps;
 for e = 1:numel(events)  
-    etaHPC = byl_GetETA(events{e},data,timestamps,'frequency',130);
+    etaHPC = byl_getETA(events{e},data,timestamps,'frequency',130);
 
     % Plot
     plot(etaHPC.window, etaHPC.avg, 'color', purple(e,:), 'LineWidth', 2,...
@@ -740,7 +740,7 @@ events = {ripples.timestamps(rippleBurst.solos & sleep,1),...
 data = photometry_STR_sync_concat.grabDA_z;
 timestamps = photometry_STR_sync_concat.timestamps;
 for e = 1:numel(events)  
-    etaHPC = byl_GetETA(events{e},data,timestamps,'frequency',130);
+    etaHPC = byl_getETA(events{e},data,timestamps,'frequency',130);
 
     % Plot
     plot(etaHPC.window, etaHPC.avg, 'color', red(e,:), 'LineWidth', 2,...
@@ -769,7 +769,7 @@ events = {ripples.timestamps(rippleBurst.solos & ~sleep,1),...
 data = photometry_STR_sync_concat.grabDA_z;
 timestamps = photometry_STR_sync_concat.timestamps;
 for e = 1:numel(events)  
-    etaHPC = byl_GetETA(events{e},data,timestamps,'frequency',130);
+    etaHPC = byl_getETA(events{e},data,timestamps,'frequency',130);
 
     % Plot
     plot(etaHPC.window, etaHPC.avg, 'color', red(e,:), 'LineWidth', 2,...
@@ -794,7 +794,7 @@ events = {photometry_STR_sync_concat.timestamps(photometry_STR_sync_concat.barco
 data = photometry_STR_sync_concat.grabDA_z;
 timestamps = photometry_STR_sync_concat.timestamps;
 for e = 1:numel(events)  
-    etaHPC = byl_GetETA(events{e},data,timestamps,'frequency',130);
+    etaHPC = byl_getETA(events{e},data,timestamps,'frequency',130);
 
     % Plot
     plot(etaHPC.window, etaHPC.avg, 'color', orange(e,:), 'LineWidth', 2,...
@@ -820,7 +820,7 @@ events = {behavTrials.timestamps(logical(behavTrials.reward_outcome)),...
 data = photometry_STR_sync_concat.grabDA_z;
 timestamps = photometry_STR_sync_concat.timestamps;
 for e = 1:numel(events)  
-    etaHPC = byl_GetETA(events{e},data,timestamps,'frequency',130);
+    etaHPC = byl_getETA(events{e},data,timestamps,'frequency',130);
 
     % Plot
     plot(etaHPC.window, etaHPC.avg, 'color', orange(e,:), 'LineWidth', 2,...
@@ -906,7 +906,7 @@ events = {ripples.timestamps(rippleBurst.solos & large,1),...
 data = photometry_HPC_sync_concat.grabDA_z;
 timestamps = photometry_HPC_sync_concat.timestamps;
 for e = 1:numel(events)  
-    etaHPC = byl_GetETA(events{e},data,timestamps,'frequency',130);
+    etaHPC = byl_getETA(events{e},data,timestamps,'frequency',130);
 
     % Plot
     plot(etaHPC.window, etaHPC.avg, 'color', green(e,:), 'LineWidth', 2,...

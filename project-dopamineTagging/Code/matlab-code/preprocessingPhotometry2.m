@@ -1,15 +1,18 @@
 %% Load Data Directory and filenames
 clear all;
 close all;
-addpath('C:\Users\Gergely\Documents\Brian\BuzlabPhD\project-dopamineTagging\Code\matlab-code');
-directory = readtable('C:\Users\Gergely\Documents\Brian\Data\project-dopamineTagging-data\data-directory.xlsx');
+% addpath('C:\Users\Gergely\Documents\Brian\BuzlabPhD\project-dopamineTagging\Code\matlab-code');
+% directory = readtable('C:\Users\Gergely\Documents\Brian\Data\project-dopamineTagging-data\data-directory.xlsx');
+% personal laptop / PC directory structure:
+addpath("C:\Users\brian\BuzlabPhD\project-dopamineTagging\Code\matlab-code\");
+directory = readtable("\\research-cifs.nyumc.org\research\buzsakilab\Buzsakilabspace\LabShare\BrianLi\project-dopamine-tagging\data-directories.xlsx");
 sessions2analyze = logical(directory.Use);
 animals2analyze = strcmp(directory.Mouse,'N17');
 twoRegions = directory.HPC & directory.STR;
 % sessionPaths = directory.Path(sessions2analyze & animals2analyze);
 sessionPaths = directory.Path(animals2analyze & twoRegions);
 disp(sessionPaths);
-sesh = 2;
+sesh = 4;
 
 for s = 1:numel(sessionPaths)
     preprocessedPaths = dir(fullfile(sessionPaths{s},'\*.photometry.*.sync.conc.mat'));
@@ -73,6 +76,7 @@ for e = 1:numel(photometryDataPaths)
 end
 
 %% Check Synchronization
+ 
 photometryDataPaths = dir(fullfile(sessionPaths{sesh},'*\*_new_photometry.mat'));
 for e = 1:size(photometryDataPaths,1)
     filenames_unsync{e,1} = fullfile([photometryDataPaths(e).folder],[photometryDataPaths(e).name]);
@@ -113,7 +117,8 @@ sleep2_str_sync = syncPhotometry;
 
 
 F1 = figure(10); clf; hold on;
-F1.Position = [100 100 1500 800];
+F1.Units = 'normalized';
+F1.Position = [0 0.05 1 0.865];
 
 TL = split(sessionPaths{sesh},'\');
 TL = strrep(TL{end},'_',' ');
