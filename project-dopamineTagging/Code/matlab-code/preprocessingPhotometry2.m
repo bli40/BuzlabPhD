@@ -1,6 +1,7 @@
 %% Load Data Directory and filenames
 clear all;
 close all;
+clc;
 % addpath('C:\Users\Gergely\Documents\Brian\BuzlabPhD\project-dopamineTagging\Code\matlab-code');
 % directory = readtable('C:\Users\Gergely\Documents\Brian\Data\project-dopamineTagging-data\data-directory.xlsx');
 % personal laptop / PC directory structure:
@@ -14,38 +15,57 @@ sessionPaths = directory.Path(sessions2analyze);
 disp(sessionPaths);
 sesh = 4;
 
-for s = 1:numel(sessionPaths)
+[hasConc, hasSync, hasMat, numRegions, numEpochs] = deal(zeros(size(directory,1),1));
+verbose = true;
+
+for s = 20 %1:numel(sessionPaths)
     preprocessedPaths = dir(fullfile(sessionPaths{s},'\*.photometry.*.sync.conc.mat'));
     [~,name,~] = fileparts(sessionPaths{s});
-    fprintf('<strong>%d) %s has %d</strong> synchronized and concatenated photometry files:\n',s,name,numel(preprocessedPaths))
-    for e = 1:numel(preprocessedPaths)
-        sessionName = split(preprocessedPaths(e).name,'.');
-        fprintf(2,'<strong>\t%s\n</strong>',sessionName{3})
+    fprintf('<strong>%d) %s </strong>\n',s,name)
+    if numel(preprocessedPaths) ~= 0
+        hasConc(s) = 1;
+        for e = 1:numel(preprocessedPaths)
+            sessionName = split(preprocessedPaths(e).name,'.');
+            fprintf(2,'<strong>\t%s\n</strong>',preprocessedPaths(e).name);
+        end
     end
-    if numel(preprocessedPaths) == 0
-        syncPhotometryPaths = dir(fullfile(sessionPaths{s},'*\*_new_photometry_sync.mat'));
-        if numel(syncPhotometryPaths) ~= 0
-            epochs = split({syncPhotometryPaths.name},'-');
-            epochs = unique(epochs(:,:,1));
-            for i = 1:numel(epochs)
-                fprintf('\t%s - %i files ready to <strong>concatenate</strong>.\n', epochs{i}, sum(contains({syncPhotometryPaths.name},epochs{i})));
-            end
-        else
-            photometryDataPaths = dir(fullfile(sessionPaths{s},'*\*_new_photometry.mat'));
-            if numel(photometryDataPaths) ~= 0
-                epochs = split({photometryDataPaths.name},'-');
-                epochs = unique(epochs(:,:,1));
-                for i = 1:numel(epochs)
-                    fprintf('\t%s - %i files ready to <strong>synchronize</strong>.\n', epochs{i}, sum(contains({photometryDataPaths.name},epochs{i})));
-                end
-            else
-                epochsDataPaths = dir(fullfile(sessionPaths{s},'*\*.ppd'));
-                epochs = split({epochsDataPaths.name},'-');
-                epochs = unique(epochs(:,:,1));
-                for i = 1:numel(epochs)
-                    fprintf('\t%s - %i files ready to <strong>preprocess</strong>.\n', epochs{i}, sum(contains({epochsDataPaths.name},epochs{i})));
-                end
-            end
+    
+    syncPhotometryPaths = dir(fullfile(sessionPaths{s},'*\*_new_photometry_sync.mat'));
+    if numel(syncPhotometryPaths) ~= 0
+        hasSync(s) = 1;
+    end
+    if numel(syncPhotometryPaths) == 0 || verbose
+        regions = split({syncPhotometryPaths.name},'-');
+        regions = unique(regions(:,:,1));
+        for i = 1:numel(regions)
+            fprintf('\t%s - %i files ready to <strong>concatenate</strong>.\n', regions{i}, sum(contains({syncPhotometryPaths.name},regions{i})));
+            fprintf('\t\t%s\n',syncPhotometryPaths(contains({syncPhotometryPaths.name},regions{i})).name);
+        end
+    end
+
+    photometryDataPaths = dir(fullfile(sessionPaths{s},'*\*_new_photometry.mat'));
+    if numel(photometryDataPaths) ~= 0
+        hasMat(s) = 1;
+    end
+    if numel(photometryDataPaths) == 0 || verbose
+        regions = split({photometryDataPaths.name},'-');
+        regions = unique(regions(:,:,1));
+        for i = 1:numel(regions)
+            fprintf('\t%s - %i files ready to <strong>synchronize</strong>.\n', regions{i}, sum(contains({photometryDataPaths.name},regions{i})));
+            fprintf('\t\t%s\n',photometryDataPaths(contains({photometryDataPaths.name},regions{i})).name);
+        end
+    end
+
+    epochsDataPaths = dir(fullfile(sessionPaths{s},'*\*.ppd'));
+    % regions = split({epochsDataPaths.name},'-');
+    % regions = split(regions(:,:,1),'_');
+    % regions = unique(regions(:,:,2));
+    if numel(epochsDataPaths) == 0 || verbose
+        regions = split({epochsDataPaths.name},'-');
+        regions = unique(regions(:,:,1));
+        for i = 1:numel(regions)
+            fprintf('\t%s - %i files ready to <strong>preprocess</strong>.\n', regions{i}, sum(contains({epochsDataPaths.name},regions{i})));
+            fprintf('\t\t%s\n',epochsDataPaths(contains({epochsDataPaths.name},regions{i})).name);
         end
     end
 end
@@ -53,7 +73,7 @@ cd(sessionPaths{sesh});
 
 %% Sync Pre-Processed Photometry Data
 
-overwrite = true;
+overwrite = false;
 dryrun = false;
 clc;
 if dryrun
@@ -285,7 +305,7 @@ grabDA_raw = [sleep1_hpc.grabDA_raw;...
               sleep2_hpc.grabDA_raw];
 
 % >>>>>>>
-epochs = [sleep1_hpc.timestamps(1), sleep1_hpc.timestamps(end); ...
+regions = [sleep1_hpc.timestamps(1), sleep1_hpc.timestamps(end); ...
     behav1_hpc.timestamps(1), behav1_hpc.timestamps(end); ...
     sleep2_hpc.timestamps(1) sleep2_hpc.timestamps(end)];
 
@@ -301,7 +321,7 @@ photometry_HPC_sync_concat = struct("sampling_rate", sampling_rate, ...
                                     "grabDA_z", grabDA_z, ...
                                     "grabDA_df", grabDA_df, ...
                                     "grabDA_raw", grabDA_raw, ...
-                                    "epochs", epochs, ...
+                                    "epochs", regions, ...
                                     "epochNames", epochNames);
 [~,name,~] = fileparts(sessionPaths{sesh});
 savepath = fullfile(sessionPaths{sesh},join([name, '.photometry.HPC.sync.conc.mat'],''));
@@ -353,7 +373,7 @@ grabDA_raw = [sleep1_str.grabDA_raw;...
               sleep2_str.grabDA_raw];
 
 % >>>>>>>
-epochs = [sleep1_str.timestamps(1), sleep1_str.timestamps(end); ...
+regions = [sleep1_str.timestamps(1), sleep1_str.timestamps(end); ...
     behav1_str.timestamps(1), behav1_str.timestamps(end); ...
     sleep2_str.timestamps(1) sleep2_str.timestamps(end)];
 
@@ -369,7 +389,7 @@ photometry_STR_sync_concat = struct("sampling_rate", sampling_rate, ...
                                     "grabDA_z", grabDA_z, ...
                                     "grabDA_df", grabDA_df, ...
                                     "grabDA_raw", grabDA_raw, ...
-                                    "epochs", epochs, ...
+                                    "epochs", regions, ...
                                     "epochNames", epochNames);
 [~,name,~] = fileparts(sessionPaths{sesh});
 savepath = fullfile(sessionPaths{sesh},join([name, '.photometry.STR.sync.conc.mat'],''));
