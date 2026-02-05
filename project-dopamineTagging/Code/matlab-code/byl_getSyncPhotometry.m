@@ -34,7 +34,7 @@ function syncPhotometry = byl_getSyncPhotometry(photometryData, intanData)
     %Extract barcode data from Pyphotometry preprocessed file
     %load(photometryData);
     srPhot = photometryData.sampling_rate; %Get samplingrate
-    barcodePhot = photometryData.highLow; %High/low signal
+    barcodePhot = photometryData.highLowSync; %High/low signal
     
     % Resample barcodeIntan to match Photometry sampling rate (130 Hz)
     barcodeIntanResampled = resample(double(barcodeIntan), srPhot, srIntan);
@@ -53,10 +53,10 @@ function syncPhotometry = byl_getSyncPhotometry(photometryData, intanData)
     %Shift photometry signal to match intan timestamps
     tPhotDs = tPhot + timeShift ;
     syncPhotometry.sampling_rate = photometryData.sampling_rate;
-    syncPhotometry.barcodesOn = photometryData.barcodesOn;
-    syncPhotometry.barcodesOnOff = photometryData.barcodesOnOff;
+    syncPhotometry.stimpulsOnOff = photometryData.stimpulseOnOff;
     syncPhotometry.syncpulseOnOff = photometryData.syncpulseOnOff;
-    syncPhotometry.highLow = photometryData.highLow;
+    syncPhotometry.highLowStim = photometryData.highLowStim;
+    syncPhotometry.highLowSync = photometryData.highLowSync;
     syncPhotometry.timestamps = tPhotDs';
     syncPhotometry.grabDA_z = photometryData.grabDA_z';
     syncPhotometry.grabDA_df = photometryData.grabDA_df';

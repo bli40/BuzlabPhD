@@ -10,7 +10,7 @@ sessions2analyze = logical(directory.Use);
 animals2analyze = strcmp(directory.Mouse,'N17');
 twoRegions = directory.HPC & directory.STR;
 % sessionPaths = directory.Path(sessions2analyze & animals2analyze);
-sessionPaths = directory.Path(animals2analyze & twoRegions);
+sessionPaths = directory.Path(sessions2analyze);
 disp(sessionPaths);
 sesh = 4;
 
@@ -52,27 +52,57 @@ end
 cd(sessionPaths{sesh});
 
 %% Sync Pre-Processed Photometry Data
-photometryDataPaths = dir(fullfile(sessionPaths{sesh},'*\*_new_photometry.mat'));
-if numel(photometryDataPaths) == 0
-    fprintf('There are no photometry.mat files to process.\nPlease run preprocessingPhotometry1.py first!\n')
-    return;
+
+overwrite = true;
+dryrun = false;
+clc;
+if dryrun
+    fprintf('Starting DRY-RUN!\n');
+else
+    fprintf('Starting Synchronization!\n');
 end
-intanDataPaths = fullfile(sessionPaths{sesh},'digitalin.dat');
-for e = 1:numel(photometryDataPaths)
-    filename = fullfile(photometryDataPaths(e).folder,photometryDataPaths(e).name);
-    [filepath,name,ext] = fileparts(filename);
-    savefile = join([filepath,'\',name,'_sync',ext]);
-    if isfile(savefile)
-        fprintf('Already exists! \n\tSkipping %s .\n',savefile)
-        continue;
-    else
-        fprintf('Saving to: %s\n',savefile)
+
+for sp = 1:numel(sessionPaths)
+    [~,session,~] = fileparts(sessionPaths{sp});
+    fprintf(2,'<strong>Syncing %s\n</strong>',session);
+    photometryDataPaths = dir(fullfile(sessionPaths{sp},'*\*_new_photometry.mat'));
+    if numel(photometryDataPaths) == 0
+        fprintf('There are no photometry.mat files to process.\nPlease run preprocessingPhotometry1.py first!\n')
+        return;
+    end
+    intanDataPaths = fullfile(sessionPaths{sp},'digitalin.dat');
+    for e = 1:numel(photometryDataPaths)
+        fprintf('\t<strong>Epoch</strong> - %s\n',photometryDataPaths(e).name);
+        filename = fullfile(photometryDataPaths(e).folder,photometryDataPaths(e).name);
+        [filepath,name,ext] = fileparts(filename);
+        savefile = join([filepath,'\',name,'_sync',ext]);
+        shortname = split(savefile,'\');
+        shortname = join(['*\',fullfile(shortname{end-2:end})]);
+        if isfile(savefile) 
+            fprintf('\tAlready exists!\n\t%s\n',shortname')
+            if overwrite
+                fprintf('\t-> Overwriting...\n');
+            else
+                fprintf('\t-> Skipping...\n');
+                continue;
+            end
+        else
+            fprintf('\tSaving to: %s\n',shortname)
+        end
+        
+        if dryrun == false
+            load(filename);
+            syncPhotometry = byl_getSyncPhotometry(photometryData, intanDataPaths);
+            save(savefile,"syncPhotometry");
+        end
+        fprintf("\t\tfile %d/%d done.\n",e,numel(photometryDataPaths));
     end
 
-    load(filename);
-    syncPhotometry = getSyncPhotometry(photometryData, intanDataPaths);
-    save(savefile,"syncPhotometry");
-    fprintf("file %d/%d done...\n",e,numel(photometryDataPaths));
+end
+if dryrun
+    fprintf('DRY-RUN complete!\n');
+else
+    fprintf('Synchronization complete!\n');
 end
 
 %% Check Synchronization
@@ -215,19 +245,24 @@ disp('Concatenating hippocampal data ...')
 sampling_rate = 130;
 
 % >>>>>>>
-barcodesOn = [sleep1_hpc.barcodesOn,...
-              behav1_hpc.barcodesOn + numel(sleep1_hpc.timestamps),...
-              sleep2_hpc.barcodesOn + numel(sleep1_hpc.timestamps) + numel(behav1_hpc.timestamps)]';
+stimpulseOnOff = [sleep1_hpc.stimulusOnOff,...
+              behav1_hpc.stimulusOnOff + numel(sleep1_hpc.timestamps),...
+              sleep2_hpc.stimulusOnOff + numel(sleep1_hpc.timestamps) + numel(behav1_hpc.timestamps)]';
 
 % >>>>>>>
-barcodesOnOff = [sleep1_hpc.barcodesOnOff;...
-                 behav1_hpc.barcodesOnOff + numel(sleep1_hpc.timestamps);...
-                 sleep2_hpc.barcodesOnOff + numel(sleep1_hpc.timestamps) + numel(behav1_hpc.timestamps)];
+syncpulseOnOff = [sleep1_hpc.syncpulseOnOff;...
+                 behav1_hpc.syncpulseOnOff + numel(sleep1_hpc.timestamps);...
+                 sleep2_hpc.syncpulseOnOff + numel(sleep1_hpc.timestamps) + numel(behav1_hpc.timestamps)];
 
 % >>>>>>>
-highLow = [sleep1_hpc.highLow, ...
-           behav1_hpc.highLow, ...
-           sleep2_hpc.highLow]';
+highLowStim = [sleep1_hpc.highLowStim, ...
+           behav1_hpc.highLowStim, ...
+           sleep2_hpc.highLowStim]';
+
+% >>>>>>>
+highLowSync = [sleep1_hpc.highLowSync, ...
+           behav1_hpc.highLowSync, ...
+           sleep2_hpc.highLowSync]';
 
 % >>>>>>>
 timestamps = [sleep1_hpc.timestamps;...
@@ -258,9 +293,10 @@ epochs = [sleep1_hpc.timestamps(1), sleep1_hpc.timestamps(end); ...
 epochNames = ["sleep_1"; "behav_1"; "sleep_2"];
 
 photometry_HPC_sync_concat = struct("sampling_rate", sampling_rate, ...
-                                    "barcodesOn", barcodesOn, ...
-                                    "barcodesOnOff", barcodesOnOff, ...
-                                    "highLow", highLow, ...
+                                    "stimpulseOnOff", stimpulseOnOff, ...
+                                    "syncpulseOnOff", syncpulseOnOff, ...
+                                    "highLowStim", highLowStim, ...
+                                    "highLowSync", highLowSync, ...
                                     "timestamps", timestamps, ...
                                     "grabDA_z", grabDA_z, ...
                                     "grabDA_df", grabDA_df, ...
@@ -282,17 +318,17 @@ disp('Concatenating striatal data ...')
 sampling_rate = 130;
 
 % >>>>>>>
-barcodesOn = [sleep1_str.barcodesOn,...
-              behav1_str.barcodesOn + numel(sleep1_str.timestamps),...
-              sleep2_str.barcodesOn + numel(sleep1_str.timestamps) + numel(behav1_str.timestamps)]';
+stimpulseOnOff = [sleep1_str.stimpulseOnOff,...
+              behav1_str.stimpulseOnOff + numel(sleep1_str.timestamps),...
+              sleep2_str.stimpulseOnOff + numel(sleep1_str.timestamps) + numel(behav1_str.timestamps)]';
 
 % >>>>>>>
-barcodesOnOff = [sleep1_str.barcodesOnOff;...
-                 behav1_str.barcodesOnOff + numel(sleep1_str.timestamps);...
-                 sleep2_str.barcodesOnOff + numel(sleep1_str.timestamps) + numel(behav1_str.timestamps)];
+syncpulseOnOff = [sleep1_str.syncpulseOnOff;...
+                 behav1_str.syncpulseOnOff + numel(sleep1_str.timestamps);...
+                 sleep2_str.syncpulseOnOff + numel(sleep1_str.timestamps) + numel(behav1_str.timestamps)];
 
 % >>>>>>>
-highLow = [sleep1_str.highLow, ...
+highLowStim = [sleep1_str.highLow, ...
            behav1_str.highLow, ...
            sleep2_str.highLow]';
 
@@ -325,9 +361,10 @@ epochs = [sleep1_str.timestamps(1), sleep1_str.timestamps(end); ...
 epochNames = ["sleep_1"; "behav_1"; "sleep_2"];
 
 photometry_STR_sync_concat = struct("sampling_rate", sampling_rate, ...
-                                    "barcodesOn", barcodesOn, ...
-                                    "barcodesOnOff", barcodesOnOff, ...
-                                    "highLow", highLow, ...
+                                    "stimpulseOnOff", stimpulseOnOff, ...
+                                    "syncpulseOnOff", syncpulseOnOff, ...
+                                    "highLowStim", highLowStim, ...
+                                    "highLowSync", highLowSync, ...
                                     "timestamps", timestamps, ...
                                     "grabDA_z", grabDA_z, ...
                                     "grabDA_df", grabDA_df, ...
