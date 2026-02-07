@@ -74,7 +74,7 @@ fileTable = table(hasConc, hasSync, hasMat, whichRegions, numEpochs, ...
 
 %% Sync Pre-Processed Photometry Data
 
-overwrite = false;
+overwrite = true;
 dryrun = false;
 clc;
 if dryrun
@@ -82,7 +82,7 @@ if dryrun
 else
     fprintf('Starting Synchronization!\n');
 end
-
+tic;
 for sp = 1:numel(sessionPaths)
     [~,session,~] = fileparts(sessionPaths{sp});
     fprintf(2,'<strong>Syncing %s\n</strong>',session);
@@ -125,9 +125,11 @@ if dryrun
 else
     fprintf('Synchronization complete!\n');
 end
-
+toc;
 %% Check Synchronization
-for sp = 15:numel(sessionPaths)
+parpool(8);
+
+parfor sp = 1:numel(sessionPaths)
     photometryDataPaths = dir(fullfile(sessionPaths{sp},'*\*_new_photometry.mat'));
     syncPhotometryPaths = dir(fullfile(sessionPaths{sp},'*\*_new_photometry_sync.mat'));
 
@@ -212,31 +214,41 @@ clearvars -except sessionPaths sesh;
 cd Z:\\Buzsakilabspace\LabShare\ZutshiI\patchTask\N17\N17_250511_sess17\
 
 disp('Loading data for concatenation...')
+for sp = 1:numel(sessionPaths)
+    syncPhotometryPaths = dir(fullfile(sessionPaths{sp},'*\*_new_photometry_sync.mat'));
 
-syncPhotometryPaths = dir(fullfile(sessionPaths{sesh},'*\*_new_photometry_sync.mat'));
-for e = 1:size(syncPhotometryPaths,1)
-    filenames_sync{e,1} = fullfile([syncPhotometryPaths(e).folder],[syncPhotometryPaths(e).name]);
+    regions = fileTable.whichRegions{sp};
+    numRegions = numel(regions);
+
+    epochFolders = string({photometryDataPaths.folder});
+    [~,epochFolders,~] = fileparts(epochFolders);
+    [~,~,epochIdx] = unique(epochFolders, 'stable');
+    
+    syncArray = cell(numRegions, fileTable.numEpochs(sp));
+   
+    for k = 1:numel(syncPhotometryPaths)
+        fname = syncPhotometryPaths(k).name;
+        reg = extractBefore(fname,'-');
+        r = strcmp(regions, reg);
+        c = epochIdx(k);
+        syncArray{r,c} = load(fullfile(syncPhotometryPaths(k).folder,fname));
+    end
+    fprintf('Synced Data Loaded.\n')
+
+    clear syncPhotometry
+    disp('Ready to concatenate.')
+
+    whichFiles = ~cellfun(@isempty, syncArray);
+
+    for re = 1:numRegions
+        if sum(whichFiles(re,:)) == 1
+            fprintf('Only one epoch for this region. Skipping concatenation.\n')
+        else
+        fields = fieldnames(syncArray())
+        end
+
+    end
 end
-
-% sync
-load(filenames_sync{1});
-sleep1_hpc = syncPhotometry;
-load(filenames_sync{2});
-sleep1_str = syncPhotometry;
-load(filenames_sync{3});
-behav1_hpc = syncPhotometry;
-load(filenames_sync{4});
-behav1_str = syncPhotometry;
-load(filenames_sync{5});
-sleep2_hpc = syncPhotometry;
-load(filenames_sync{6});
-sleep2_str = syncPhotometry;
-
-clear syncPhotometry
-disp('Ready to concatenate.')
-%% Concatenate Photometry files
-disp('Concatenating hippocampal data ...')
-
 % >>>>>>> hippocampus data <<<<<<<
 sampling_rate = 130;
 
