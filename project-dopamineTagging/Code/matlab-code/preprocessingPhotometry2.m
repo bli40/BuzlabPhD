@@ -209,9 +209,7 @@ parfor sp = 1:numel(sessionPaths)
     end
 end
 
-%% Load Data for Concatenation
-clearvars -except sessionPaths sesh;
-cd Z:\\Buzsakilabspace\LabShare\ZutshiI\patchTask\N17\N17_250511_sess17\
+%% Concatenate
 
 disp('Loading data for concatenation...')
 for sp = 1:numel(sessionPaths)
@@ -220,14 +218,16 @@ for sp = 1:numel(sessionPaths)
     regions = fileTable.whichRegions{sp};
     numRegions = numel(regions);
 
-    epochFolders = string({photometryDataPaths.folder});
+    epochFolders = string({syncPhotometryPaths.folder});
     [~,epochFolders,~] = fileparts(epochFolders);
     [~,~,epochIdx] = unique(epochFolders, 'stable');
-    
+    numEpochs = numel(epochIdx);
+
     syncArray = cell(numRegions, fileTable.numEpochs(sp));
-   
+  
     for k = 1:numel(syncPhotometryPaths)
         fname = syncPhotometryPaths(k).name;
+        [~,fdir,~] = fileparts(syncPhotometryPaths(k).folder);
         reg = extractBefore(fname,'-');
         r = strcmp(regions, reg);
         c = epochIdx(k);
@@ -239,152 +239,26 @@ for sp = 1:numel(sessionPaths)
     disp('Ready to concatenate.')
 
     whichFiles = ~cellfun(@isempty, syncArray);
+    fields = fieldnames(syncArray{find(whichFiles,1,'first')}.syncPhotometry);
 
     for re = 1:numRegions
-        if sum(whichFiles(re,:)) == 1
-            fprintf('Only one epoch for this region. Skipping concatenation.\n')
-        else
-        fields = fieldnames(syncArray())
+        for f = 1:numel(fields)
+            fn = fields{f};
+            cells = syncArray(re,:);
+            cells = cells(~cellfun(@isempty, cells));
+            structs = [cells{:}];
+            structs = [structs.syncPhotometry];
+            try
+                concPhotom.(fn) = vertcat(structs.(fn));
+            catch
+                concPhotom.(fn) = horzcat(structs.(fn));
+            end
         end
-
+        shortName = upper(extractAfter(regions{re},'_'));
+        shortName = shortName(1:3);
+        [~,name,~] = fileparts(sessionPaths{sp});
+        fprintf('<strong>%i) %s</strong> - %s concatenated.\n',sp,name,shortName)
+        savepath = fullfile(sessionPaths{sp},join({name,'photometry',shortName,'mat'},'.'));
+        save(savepath{:}, "concPhotom");
     end
 end
-% >>>>>>> hippocampus data <<<<<<<
-sampling_rate = 130;
-
-% >>>>>>>
-stimpulseOnOff = [sleep1_hpc.stimulusOnOff,...
-              behav1_hpc.stimulusOnOff + numel(sleep1_hpc.timestamps),...
-              sleep2_hpc.stimulusOnOff + numel(sleep1_hpc.timestamps) + numel(behav1_hpc.timestamps)]';
-
-% >>>>>>>
-syncpulseOnOff = [sleep1_hpc.syncpulseOnOff;...
-                 behav1_hpc.syncpulseOnOff + numel(sleep1_hpc.timestamps);...
-                 sleep2_hpc.syncpulseOnOff + numel(sleep1_hpc.timestamps) + numel(behav1_hpc.timestamps)];
-
-% >>>>>>>
-highLowStim = [sleep1_hpc.highLowStim, ...
-           behav1_hpc.highLowStim, ...
-           sleep2_hpc.highLowStim]';
-
-% >>>>>>>
-highLowSync = [sleep1_hpc.highLowSync, ...
-           behav1_hpc.highLowSync, ...
-           sleep2_hpc.highLowSync]';
-
-% >>>>>>>
-timestamps = [sleep1_hpc.timestamps;...
-              behav1_hpc.timestamps;...
-              sleep2_hpc.timestamps];
-
-% >>>>>>>
-grabDA_z = [sleep1_hpc.grabDA_z;...
-            behav1_hpc.grabDA_z;...
-            sleep2_hpc.grabDA_z];
-
-% >>>>>>>
-grabDA_df = [sleep1_hpc.grabDA_df;...
-             behav1_hpc.grabDA_df;...
-             sleep2_hpc.grabDA_df];
-
-% >>>>>>>
-grabDA_raw = [sleep1_hpc.grabDA_raw;...
-              behav1_hpc.grabDA_raw;...
-              sleep2_hpc.grabDA_raw];
-
-% >>>>>>>
-regions = [sleep1_hpc.timestamps(1), sleep1_hpc.timestamps(end); ...
-    behav1_hpc.timestamps(1), behav1_hpc.timestamps(end); ...
-    sleep2_hpc.timestamps(1) sleep2_hpc.timestamps(end)];
-
-% >>>>>>>
-epochNames = ["sleep_1"; "behav_1"; "sleep_2"];
-
-photometry_HPC_sync_concat = struct("sampling_rate", sampling_rate, ...
-                                    "stimpulseOnOff", stimpulseOnOff, ...
-                                    "syncpulseOnOff", syncpulseOnOff, ...
-                                    "highLowStim", highLowStim, ...
-                                    "highLowSync", highLowSync, ...
-                                    "timestamps", timestamps, ...
-                                    "grabDA_z", grabDA_z, ...
-                                    "grabDA_df", grabDA_df, ...
-                                    "grabDA_raw", grabDA_raw, ...
-                                    "epochs", regions, ...
-                                    "epochNames", epochNames);
-[~,name,~] = fileparts(sessionPaths{sesh});
-savepath = fullfile(sessionPaths{sesh},join([name, '.photometry.HPC.sync.conc.mat'],''));
-if isfile(savepath)
-    fprintf('Already exists! \n\t Skipping %s\n',savepath);
-else
-    save(savepath, "photometry_HPC_sync_concat");
-    disp("saved and done.")
-end
-
-disp('Concatenating striatal data ...')
-
-% >>>>>>> striatum data <<<<<<<
-sampling_rate = 130;
-
-% >>>>>>>
-stimpulseOnOff = [sleep1_str.stimpulseOnOff,...
-              behav1_str.stimpulseOnOff + numel(sleep1_str.timestamps),...
-              sleep2_str.stimpulseOnOff + numel(sleep1_str.timestamps) + numel(behav1_str.timestamps)]';
-
-% >>>>>>>
-syncpulseOnOff = [sleep1_str.syncpulseOnOff;...
-                 behav1_str.syncpulseOnOff + numel(sleep1_str.timestamps);...
-                 sleep2_str.syncpulseOnOff + numel(sleep1_str.timestamps) + numel(behav1_str.timestamps)];
-
-% >>>>>>>
-highLowStim = [sleep1_str.highLow, ...
-           behav1_str.highLow, ...
-           sleep2_str.highLow]';
-
-% >>>>>>>
-timestamps = [sleep1_str.timestamps;...
-              behav1_str.timestamps;...
-              sleep2_str.timestamps];
-
-% >>>>>>>
-grabDA_z = [sleep1_str.grabDA_z;...
-            behav1_str.grabDA_z;...
-            sleep2_str.grabDA_z];
-
-% >>>>>>>
-grabDA_df = [sleep1_str.grabDA_df;...
-             behav1_str.grabDA_df;...
-             sleep2_str.grabDA_df];
-
-% >>>>>>>
-grabDA_raw = [sleep1_str.grabDA_raw;...
-              behav1_str.grabDA_raw;...
-              sleep2_str.grabDA_raw];
-
-% >>>>>>>
-regions = [sleep1_str.timestamps(1), sleep1_str.timestamps(end); ...
-    behav1_str.timestamps(1), behav1_str.timestamps(end); ...
-    sleep2_str.timestamps(1) sleep2_str.timestamps(end)];
-
-% >>>>>>>
-epochNames = ["sleep_1"; "behav_1"; "sleep_2"];
-
-photometry_STR_sync_concat = struct("sampling_rate", sampling_rate, ...
-                                    "stimpulseOnOff", stimpulseOnOff, ...
-                                    "syncpulseOnOff", syncpulseOnOff, ...
-                                    "highLowStim", highLowStim, ...
-                                    "highLowSync", highLowSync, ...
-                                    "timestamps", timestamps, ...
-                                    "grabDA_z", grabDA_z, ...
-                                    "grabDA_df", grabDA_df, ...
-                                    "grabDA_raw", grabDA_raw, ...
-                                    "epochs", regions, ...
-                                    "epochNames", epochNames);
-[~,name,~] = fileparts(sessionPaths{sesh});
-savepath = fullfile(sessionPaths{sesh},join([name, '.photometry.STR.sync.conc.mat'],''));
-if isfile(savepath)
-    fprintf('Already exists! \n\t Skipping %s\n',savepath);
-else
-    save(savepath, "photometry_STR_sync_concat");
-    disp("saved and done.")
-end
-cd(sessionPaths{sesh});
