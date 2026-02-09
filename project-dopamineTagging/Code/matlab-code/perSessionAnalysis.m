@@ -1,7 +1,7 @@
-%% Load Data and Check if Preprocessing is Complete
+%% Load Data Directory and filenames
 clear all;
 close all;
-% lab PC-Gergely directory structure:
+% clc;
 % addpath('C:\Users\Gergely\Documents\Brian\BuzlabPhD\project-dopamineTagging\Code\matlab-code');
 % directory = readtable('C:\Users\Gergely\Documents\Brian\Data\project-dopamineTagging-data\data-directory.xlsx');
 % personal laptop / PC directory structure:
@@ -11,51 +11,71 @@ sessions2analyze = logical(directory.Use);
 animals2analyze = strcmp(directory.Mouse,'N17');
 twoRegions = directory.HPC & directory.STR;
 % sessionPaths = directory.Path(sessions2analyze & animals2analyze);
-sessionPaths = directory.Path(animals2analyze & twoRegions);
+sessionPaths = directory.Path(sessions2analyze);
 disp(sessionPaths);
-sesh = 2;
+sesh = 4;
+
+[hasConc, hasSync, hasMat, numEpochs] = deal(zeros(size(directory,1),1));
+whichRegions = cell(size(directory,1),1);
+verbose = false;
 
 for s = 1:numel(sessionPaths)
-    preprocessedPaths = dir(fullfile(sessionPaths{s},'\*.photometry.*.sync.conc.mat'));
+    preprocessedPaths = dir(fullfile(sessionPaths{s},'\*.photometry.*.mat'));
     [~,name,~] = fileparts(sessionPaths{s});
-    fprintf('<strong>%d) %s has %d</strong> synchronized and concatenated photometry files:\n',s,name,numel(preprocessedPaths))
-    for e = 1:numel(preprocessedPaths)
-        sessionName = split(preprocessedPaths(e).name,'.');
-        fprintf(2,'<strong>\t%s\n</strong>',sessionName{3})
+    fprintf('<strong>%d) %s </strong>\n',s,name)
+    if numel(preprocessedPaths) ~= 0
+        hasConc(s) = 1;
+        for e = 1:numel(preprocessedPaths)
+            sessionName = split(preprocessedPaths(e).name,'.');
+            fprintf(2,'<strong>\t%s\n</strong>',preprocessedPaths(e).name);
+        end
     end
-    if numel(preprocessedPaths) == 0
-        syncPhotometryPaths = dir(fullfile(sessionPaths{s},'*\*_new_photometry_sync.mat'));
-        if numel(syncPhotometryPaths) ~= 0
-            epochs = split({syncPhotometryPaths.name},'-');
-            epochs = unique(epochs(:,:,1));
-            for i = 1:numel(epochs)
-                fprintf('\t%s - %i files ready to <strong>concatenate</strong>.\n', epochs{i}, sum(contains({syncPhotometryPaths.name},epochs{i})));
-            end
-        else
-            photometryDataPaths = dir(fullfile(sessionPaths{s},'*\*_new_photometry.mat'));
-            if numel(photometryDataPaths) ~= 0
-                epochs = split({photometryDataPaths.name},'-');
-                epochs = unique(epochs(:,:,1));
-                for i = 1:numel(epochs)
-                    fprintf('\t%s - %i files ready to <strong>synchronize</strong>.\n', epochs{i}, sum(contains({photometryDataPaths.name},epochs{i})));
-                end
-            else
-                epochsDataPaths = dir(fullfile(sessionPaths{s},'*\*.ppd'));
-                epochs = split({epochsDataPaths.name},'-');
-                epochs = unique(epochs(:,:,1));
-                for i = 1:numel(epochs)
-                    fprintf('\t%s - %i files ready to <strong>preprocess</strong>.\n', epochs{i}, sum(contains({epochsDataPaths.name},epochs{i})));
-                end
-            end
+    
+    syncPhotometryPaths = dir(fullfile(sessionPaths{s},'*\*_new_photometry_sync.mat'));
+    if numel(syncPhotometryPaths) ~= 0
+        hasSync(s) = 1;
+    end
+    if numel(preprocessedPaths) == 0 || verbose
+        regions = unique(extractBefore({syncPhotometryPaths.name}, '-'));
+        for i = 1:numel(regions)
+            fprintf('\t%s - %i files ready to <strong>concatenate</strong>.\n', regions{i}, sum(contains({syncPhotometryPaths.name},regions{i})));
+            fprintf('\t\t%s\n',syncPhotometryPaths(contains({syncPhotometryPaths.name},regions{i})).name);
+        end
+    end
+
+    photometryDataPaths = dir(fullfile(sessionPaths{s},'*\*_new_photometry.mat'));
+    if numel(photometryDataPaths) ~= 0
+        hasMat(s) = 1;
+    end
+    if numel(syncPhotometryPaths) == 0 || verbose
+        regions = unique(extractBefore({syncPhotometryPaths.name}, '-'));
+        for i = 1:numel(regions)
+            fprintf('\t%s - %i files ready to <strong>synchronize</strong>.\n', regions{i}, sum(contains({photometryDataPaths.name},regions{i})));
+            fprintf('\t\t%s\n',photometryDataPaths(contains({photometryDataPaths.name},regions{i})).name);
+        end
+    end
+
+    epochsDataPaths = dir(fullfile(sessionPaths{s},'*\*.ppd'));
+    regions = unique(extractBefore({syncPhotometryPaths.name}, '-'));
+    whichRegions{s} = regions;
+    numEpochs(s) = numel(unique({epochsDataPaths.folder}));
+    if numel(photometryDataPaths) == 0 || verbose
+        regions = unique(extractBefore({syncPhotometryPaths.name}, '-'));
+        for i = 1:numel(regions)
+            fprintf('\t%s - %i files ready to <strong>preprocess</strong>.\n', regions{i}, sum(contains({epochsDataPaths.name},regions{i})));
+            fprintf('\t\t%s\n',epochsDataPaths(contains({epochsDataPaths.name},regions{i})).name);
         end
     end
 end
 cd(sessionPaths{sesh});
 
+fileTable = table(hasConc, hasSync, hasMat, whichRegions, numEpochs, ...
+    'VariableNames',{'hasConc','hasSync','hasMat','whichRegions','numEpochs'});
+
 %% Initialize
 sesh = 1;
 
-cd(sessionPaths{sesh});
+cd(sessionPaths{1});
 d = (dir(fullfile(sessionPaths{sesh},'N*.session.mat')));
 load(fullfile(d(1).folder, d(1).name))
 
@@ -77,11 +97,14 @@ load(fullfile(d(1).folder, d(1).name));
 d = (dir(fullfile('N*.SleepState.states.mat')));
 load(fullfile(d(1).folder, d(1).name))
 
-d = (dir(fullfile('N*.photometry.HPC.sync.conc.mat')));
+d = (dir(fullfile('N*.photometry.HPC.mat')));
 load(fullfile(d(1).folder, d(1).name))
+photom_hpc = concPhotom;
 
-d = (dir(fullfile('N*.photometry.STR.sync.conc.mat')));
+d = (dir(fullfile('N*.photometry.STR.mat')));
 load(fullfile(d(1).folder, d(1).name))
+photom_str = concPhotom;
+
 
 d = (dir(fullfile('N*.MergePoints.events.mat')));
 load(fullfile(d(1).folder, d(1).name))
@@ -91,8 +114,8 @@ load(fullfile(d(1).folder, d(1).name))
 % events_possible = {'Ripples','Stims','Nosepoke','Rewarded Poke', 'Unrewarded Poke'};
 % events_name = {'Ripples','Stims','Nosepoke','Rewarded Poke'};
 % events_list = {ripples.timestamps(:,1), ripples.timestamps(:,1);...
-%                photometry_HPC_sync_concat.timestamps(photometry_HPC_sync_concat.barcodesOn),...
-%                     photometry_STR_sync_concat.timestamps(photometry_STR_sync_concat.barcodesOn);...
+%                photom_hpc.timestamps(photom_hpc.stimpulseOnOff(:,1)),...
+%                     photom_str.timestamps(photom_str.stimpulseOnOff(:,1));...
 %                behavTrials.timestamps, behavTrials.timestamps;...
 %                behavTrials.timestamps(logical(behavTrials.reward_outcome)),behavTrials.timestamps(logical(behavTrials.reward_outcome))};
 % 
@@ -105,9 +128,9 @@ load(fullfile(d(1).folder, d(1).name))
 %     F1.Position = [300+(20*e) 300+(20*e) 1000 500];
 %     subplot(2,1,1);  hold on;
 %     plot(events_hpc, ones(size(events_hpc)),'|k','LineWidth',0.5,'MarkerSize',20)
-%     plot(photometry_HPC_sync_concat.timestamps,photometry_HPC_sync_concat.grabDA_df)
+%     plot(photom_hpc.timestamps,photom_hpc.grabDA_df)
 %     YL = ylim;
-%     epochs = photometry_HPC_sync_concat.epochs;
+%     epochs = photom_hpc.epochs;
 %     x = [epochs(2,1) epochs(2,1) epochs(2,2) epochs(2,2)];
 %     y = [YL flip(YL)];
 %     patch(x, y, [0.7 0.7 0.7],'EdgeColor','none','FaceAlpha',0.5)
@@ -118,9 +141,9 @@ load(fullfile(d(1).folder, d(1).name))
 % 
 %     subplot(2,1,2); hold on;
 %     plot(events_str, ones(size(events_str)),'|k','LineWidth',0.5,'MarkerSize',20)
-%     plot(photometry_STR_sync_concat.timestamps,photometry_STR_sync_concat.grabDA_df)
+%     plot(photom_str.timestamps,photom_str.grabDA_df)
 %     YL = ylim;
-%     epochs = photometry_STR_sync_concat.epochs;
+%     epochs = photom_str.epochs;
 %     x = [epochs(2,1) epochs(2,1) epochs(2,2) epochs(2,2)];
 %     y = [YL flip(YL)];
 %     patch(x, y, [0.7 0.7 0.7],'EdgeColor','none','FaceAlpha',0.5)
@@ -145,7 +168,7 @@ for i = 2:size(firstPass,1)
 		ripple = [ripple(1) firstPass(i,2)];    % prev ripple's endpoint is replaced by current ripple's endpoint. /kg
 	    id = [id; 1];
     else
-		secondPass = [secondPass ; ripple];     % secondPass is updated each cycle and contains all previous ripples. /kg
+		secondPass = [secondPass; ripple];     % secondPass is updated each cycle and contains all previous ripples. /kg
 		ripple = firstPass(i,:);                % ripple is updated each cycle and contains start and end indices. /kg
     end
 end
@@ -208,7 +231,7 @@ rippleBurst = struct('solos', ripBurstIdx == 0,...
                      'soloTimes',solos);
 
 %% Mean Stimulation Time
-stimOnOff = photometry_HPC_sync_concat.timestamps(photometry_HPC_sync_concat.barcodesOnOff);
+stimOnOff = photom_hpc.timestamps(photom_hpc.stimpulseOnOff);
 stimDur = stimOnOff(:,2) - stimOnOff(:,1);
 
 %% Event Triggered Averages
@@ -252,14 +275,14 @@ for e = 1:numel(events2plot)
             eventTimes_hpc = ripples.timestamps(:,1);
             eventTimes_str = ripples.timestamps(:,1);
         case "stims"
-            eventTimes_hpc = photometry_HPC_sync_concat.timestamps(photometry_HPC_sync_concat.barcodesOn);
-            eventTimes_str = photometry_STR_sync_concat.timestamps(photometry_STR_sync_concat.barcodesOn);
+            eventTimes_hpc = photom_hpc.timestamps(photom_hpc.stimpulseOnOff(:,1));
+            eventTimes_str = photom_str.timestamps(photom_str.stimpulseOnOff(:,1));
         case "long stim"
-            eventTimes_hpc = photometry_HPC_sync_concat.timestamps(photometry_HPC_sync_concat.barcodesOn(stimDur == 3));
-            eventTimes_str = photometry_STR_sync_concat.timestamps(photometry_STR_sync_concat.barcodesOn(stimDur == 3));
+            eventTimes_hpc = photom_hpc.timestamps(photom_hpc.stimpulseOnOff(stimDur > 1,1));
+            eventTimes_str = photom_str.timestamps(photom_str.stimpulseOnOff(stimDur > 1,1));
         case "short stim"
-            eventTimes_hpc = photometry_HPC_sync_concat.timestamps(photometry_HPC_sync_concat.barcodesOn(stimDur == 0.5));
-            eventTimes_str = photometry_STR_sync_concat.timestamps(photometry_STR_sync_concat.barcodesOn(stimDur == 0.5));
+            eventTimes_hpc = photom_hpc.timestamps(photom_hpc.stimpulseOnOff(stimDur < 1,1));
+            eventTimes_str = photom_str.timestamps(photom_str.stimpulseOnOff(stimDur < 1,1));
         case "nosepokes"
             eventTimes_hpc = behavTrials.timestamps;
             eventTimes_str = behavTrials.timestamps;
@@ -302,12 +325,12 @@ for e = 1:numel(events2plot)
     disp('Extracting event windows...')
 
     etaHPC = byl_getETA(eventTimes_hpc, ...
-        photometry_HPC_sync_concat.grabDA_z, ...
-        photometry_HPC_sync_concat.timestamps, ...
+        photom_hpc.grabDA_z, ...
+        photom_hpc.timestamps, ...
         'frequency',130);
     etaSTR = byl_getETA(eventTimes_str, ...
-        photometry_STR_sync_concat.grabDA_z, ...
-        photometry_STR_sync_concat.timestamps, ...
+        photom_str.grabDA_z, ...
+        photom_str.timestamps, ...
         'frequency',130);
     % Plot
     [~,name,~] = fileparts(sessionPaths{sesh});
@@ -543,7 +566,7 @@ xticklabels(string(xticks*1000));
 f1 = figure(10);
 nexttile(37,[1 4]); cla; hold on;
 dt = 1/130;
-time = 0:dt:photometry_HPC_sync_concat.timestamps(end);
+time = 0:dt:photom_hpc.timestamps(end);
 rips = histcounts(solos(:,1), [time time(end)+dt]) / dt;
 burs = histcounts(bursts(:,1), [time time(end)+dt]) / dt;
 
@@ -561,22 +584,22 @@ ylabel('Ripple rate (Hz)');
 %% >>> hippocampus fluorescence
 f1 = figure(10);
 nexttile(49,[1 4]); cla; hold on;
-plot(photometry_HPC_sync_concat.timestamps, photometry_HPC_sync_concat.grabDA_z, ...
+plot(photom_hpc.timestamps, photom_hpc.grabDA_z, ...
     'color',[0.5 0.5 0.5],'LineWidth',0.5)
 YL = [-10 10];
-plot([photometry_HPC_sync_concat.epochs(2,1) photometry_HPC_sync_concat.epochs(2,1)],[-10 10], ...
+plot([photom_hpc.epochs(2,1) photom_hpc.epochs(2,1)],[-10 10], ...
     '--r')
-plot([photometry_HPC_sync_concat.epochs(2,2) photometry_HPC_sync_concat.epochs(2,2)],[-10 10], ...
+plot([photom_hpc.epochs(2,2) photom_hpc.epochs(2,2)],[-10 10], ...
     '--r')
-text(photometry_HPC_sync_concat.epochs(1,1),YL(2)-1,photometry_HPC_sync_concat.epochNames{1},'Color','r')
-text(photometry_HPC_sync_concat.epochs(2,1),YL(2)-1,photometry_HPC_sync_concat.epochNames{2},'Color','r')
-text(photometry_HPC_sync_concat.epochs(3,1),YL(2)-1,photometry_HPC_sync_concat.epochNames{3},'Color','r')
+text(photom_hpc.epochs(1,1),YL(2)-1,photom_hpc.epochNames{1},'Color','r')
+text(photom_hpc.epochs(2,1),YL(2)-1,photom_hpc.epochNames{2},'Color','r')
+text(photom_hpc.epochs(3,1),YL(2)-1,photom_hpc.epochNames{3},'Color','r')
 plot(solos(:,1),(-5+0.5)*ones(size(solos(:,1))),'|k','MarkerSize',5);
 plot(bursts(:,1),-6*ones(size(bursts(:,1))),'|b','MarkerSize',5);
 plot(behavTrials.timestamps,(-7-0.5)*ones(size(behavTrials.timestamps)),'|r','MarkerSize',5)
-text(photometry_HPC_sync_concat.timestamps(end)+100,-5+0.5,'solos','FontSize',6,'Color','k')
-text(photometry_HPC_sync_concat.timestamps(end)+100,-6,'bursts','FontSize',6,'Color','b')
-text(photometry_HPC_sync_concat.timestamps(end)+100,-7-0.5,'nose pokes','FontSize',6,'Color','r')
+text(photom_hpc.timestamps(end)+100,-5+0.5,'solos','FontSize',6,'Color','k')
+text(photom_hpc.timestamps(end)+100,-6,'bursts','FontSize',6,'Color','b')
+text(photom_hpc.timestamps(end)+100,-7-0.5,'nose pokes','FontSize',6,'Color','r')
 
 xticklabels('')
 ylabel('Hipp. (z-score)')
@@ -584,22 +607,22 @@ ylabel('Hipp. (z-score)')
 %% >>> striatum fluorescence
 f1 = figure(10);
 nexttile(61,[1 4]); cla; hold on;
-plot(photometry_STR_sync_concat.timestamps, photometry_STR_sync_concat.grabDA_z, ...
+plot(photom_str.timestamps, photom_str.grabDA_z, ...
     'color',[0.5 0.5 0.5],'LineWidth',0.5)
 YL = [-10 10];
-plot([photometry_STR_sync_concat.epochs(2,1) photometry_STR_sync_concat.epochs(2,1)],[-10 10], ...
+plot([photom_str.epochs(2,1) photom_str.epochs(2,1)],[-10 10], ...
     '--r')
-plot([photometry_STR_sync_concat.epochs(2,2) photometry_STR_sync_concat.epochs(2,2)],[-10 10], ...
+plot([photom_str.epochs(2,2) photom_str.epochs(2,2)],[-10 10], ...
     '--r')
-text(photometry_STR_sync_concat.epochs(1,1),YL(2)-1,photometry_STR_sync_concat.epochNames{1},'Color','r')
-text(photometry_STR_sync_concat.epochs(2,1),YL(2)-1,photometry_STR_sync_concat.epochNames{2},'Color','r')
-text(photometry_STR_sync_concat.epochs(3,1),YL(2)-1,photometry_STR_sync_concat.epochNames{3},'Color','r')
+text(photom_str.epochs(1,1),YL(2)-1,photom_str.epochNames{1},'Color','r')
+text(photom_str.epochs(2,1),YL(2)-1,photom_str.epochNames{2},'Color','r')
+text(photom_str.epochs(3,1),YL(2)-1,photom_str.epochNames{3},'Color','r')
 plot(solos(:,1),(-5+0.5)*ones(size(solos(:,1))),'|k','MarkerSize',5);
 plot(bursts(:,1),-6*ones(size(bursts(:,1))),'|b','MarkerSize',5);
 plot(behavTrials.timestamps,(-7-0.5)*ones(size(behavTrials.timestamps)),'|r','MarkerSize',5)
-text(photometry_HPC_sync_concat.timestamps(end)+100,-5+0.5,'solos','FontSize',6,'Color','k')
-text(photometry_HPC_sync_concat.timestamps(end)+100,-6,'bursts','FontSize',6,'Color','b')
-text(photometry_HPC_sync_concat.timestamps(end)+100,-7-0.5,'nose pokes','FontSize',6,'Color','r')
+text(photom_hpc.timestamps(end)+100,-5+0.5,'solos','FontSize',6,'Color','k')
+text(photom_hpc.timestamps(end)+100,-6,'bursts','FontSize',6,'Color','b')
+text(photom_hpc.timestamps(end)+100,-7-0.5,'nose pokes','FontSize',6,'Color','r')
 
 ylabel('Striat. (z-score)')
 xlabel('Time (s)')
@@ -613,16 +636,16 @@ solo = rippleStats.data.duration(rippleBurst.solos);
 duo = rippleBurst.burstTimes(rippleBurst.burstNum == 2,2) - rippleBurst.burstTimes(rippleBurst.burstNum == 2,1);
 trio = rippleBurst.burstTimes(rippleBurst.burstNum == 3,2) - rippleBurst.burstTimes(rippleBurst.burstNum == 3,1);
 
-sleep = ripples.timestamps(:,1) < photometry_HPC_sync_concat.epochs(2,1) | ...
-        ripples.timestamps(:,1) > photometry_HPC_sync_concat.epochs(2,2);
+sleep = ripples.timestamps(:,1) < photom_hpc.epochs(2,1) | ...
+        ripples.timestamps(:,1) > photom_hpc.epochs(2,2);
 events2plot = {'solo','duos','trios'};
 events = {ripples.timestamps(rippleBurst.solos & sleep,1),...
           ripples.timestamps(rippleBurst.duos & sleep,1),...
           ripples.timestamps(rippleBurst.trios & sleep,1)};
-data = photometry_HPC_sync_concat.grabDA_z;
-timestamps = photometry_HPC_sync_concat.timestamps;
+data = photom_hpc.grabDA_z;
+timestamps = photom_hpc.timestamps;
 for e = 1:numel(events)  
-    etaHPC = byl_getETA(events{e},data,timestamps,'frequency',130);
+    etaHPC = byl_getETA(events{e},data,timestamps,'frequency',130,'normalization','none');
 
     % Plot
     plot(etaHPC.window, etaHPC.avg, 'color', blue(e,:), 'LineWidth', 2,...
@@ -651,14 +674,14 @@ set(gca,'children',flipud(get(gca,'children')))
 %% >>> ETA: solos, duos, trios hippocampus (behavior)
 f1 = figure(10);
 nexttile(7, [2 2]); cla; hold on;
-sleep = ripples.timestamps(:,1) < photometry_HPC_sync_concat.epochs(2,1) | ...
-        ripples.timestamps(:,1) > photometry_HPC_sync_concat.epochs(2,2);
+sleep = ripples.timestamps(:,1) < photom_hpc.epochs(2,1) | ...
+        ripples.timestamps(:,1) > photom_hpc.epochs(2,2);
 events2plot = {'solo','duos','trios'};
 events = {ripples.timestamps(rippleBurst.solos & ~sleep,1),...
           ripples.timestamps(rippleBurst.duos & ~sleep,1),...
           ripples.timestamps(rippleBurst.trios & ~sleep,1)};
-data = photometry_HPC_sync_concat.grabDA_z;
-timestamps = photometry_HPC_sync_concat.timestamps;
+data = photom_hpc.grabDA_z;
+timestamps = photom_hpc.timestamps;
 for e = 1:numel(events)  
     etaHPC = byl_getETA(events{e},data,timestamps,'frequency',130);
 
@@ -679,10 +702,10 @@ set(gca,'children',flipud(get(gca,'children')))
 figure(10);
 nexttile(9, [2 2]); cla; hold on;
 events2plot = {'long VTA stim','short VTA stim'};
-events = {photometry_HPC_sync_concat.timestamps(photometry_HPC_sync_concat.barcodesOn(stimDur == 3)),...
-          photometry_HPC_sync_concat.timestamps(photometry_HPC_sync_concat.barcodesOn(stimDur == 0.5))};
-data = photometry_HPC_sync_concat.grabDA_z;
-timestamps = photometry_HPC_sync_concat.timestamps;
+events = {photom_hpc.timestamps(photom_hpc.stimpulseOnOff(stimDur > 1,1)),...
+          photom_hpc.timestamps(photom_hpc.stimpulseOnOff(stimDur < 1,1))};
+data = photom_hpc.grabDA_z;
+timestamps = photom_hpc.timestamps;
 for e = 1:numel(events)  
     etaHPC = byl_getETA(events{e},data,timestamps,'frequency',130);
 
@@ -707,8 +730,8 @@ nexttile(11, [2 2]); cla; hold on;
 events2plot = {'rewarded','unrewarded'};
 events = {behavTrials.timestamps(logical(behavTrials.reward_outcome)),...
           behavTrials.timestamps(~logical(behavTrials.reward_outcome))};
-data = photometry_HPC_sync_concat.grabDA_z;
-timestamps = photometry_HPC_sync_concat.timestamps;
+data = photom_hpc.grabDA_z;
+timestamps = photom_hpc.timestamps;
 for e = 1:numel(events)  
     etaHPC = byl_getETA(events{e},data,timestamps,'frequency',130);
 
@@ -731,14 +754,14 @@ set(gca,'children',flipud(get(gca,'children')))
 %% >>> ETA: solos, duos, trios striatum (sleep)
 figure(10);
 nexttile(29, [2 2]); cla; hold on;
-sleep = ripples.timestamps(:,1) < photometry_STR_sync_concat.epochs(2,1) | ...
-        ripples.timestamps(:,1) > photometry_STR_sync_concat.epochs(2,2);
+sleep = ripples.timestamps(:,1) < photom_str.epochs(2,1) | ...
+        ripples.timestamps(:,1) > photom_str.epochs(2,2);
 events2plot = {'solo','duos','trios'};
 events = {ripples.timestamps(rippleBurst.solos & sleep,1),...
           ripples.timestamps(rippleBurst.duos & sleep,1),...
           ripples.timestamps(rippleBurst.trios & sleep,1)};
-data = photometry_STR_sync_concat.grabDA_z;
-timestamps = photometry_STR_sync_concat.timestamps;
+data = photom_str.grabDA_z;
+timestamps = photom_str.timestamps;
 for e = 1:numel(events)  
     etaHPC = byl_getETA(events{e},data,timestamps,'frequency',130);
 
@@ -760,14 +783,14 @@ set(gca,'children',flipud(get(gca,'children')))
 %% >>> ETA: solos, duos, trios striatum (behavior)
 figure(10);
 nexttile(31, [2 2]); cla; hold on;
-sleep = ripples.timestamps(:,1) < photometry_STR_sync_concat.epochs(2,1) | ...
-        ripples.timestamps(:,1) > photometry_STR_sync_concat.epochs(2,2);
+sleep = ripples.timestamps(:,1) < photom_str.epochs(2,1) | ...
+        ripples.timestamps(:,1) > photom_str.epochs(2,2);
 events2plot = {'solo','duos','trios'};
 events = {ripples.timestamps(rippleBurst.solos & ~sleep,1),...
           ripples.timestamps(rippleBurst.duos & ~sleep,1),...
           ripples.timestamps(rippleBurst.trios & ~sleep,1)};
-data = photometry_STR_sync_concat.grabDA_z;
-timestamps = photometry_STR_sync_concat.timestamps;
+data = photom_str.grabDA_z;
+timestamps = photom_str.timestamps;
 for e = 1:numel(events)  
     etaHPC = byl_getETA(events{e},data,timestamps,'frequency',130);
 
@@ -789,18 +812,18 @@ set(gca,'children',flipud(get(gca,'children')))
 figure(10);
 nexttile(33, [2 2]); cla; hold on;
 events2plot = {'long VTA stim','short VTA stim'};
-events = {photometry_STR_sync_concat.timestamps(photometry_STR_sync_concat.barcodesOn(stimDur == 3)),...
-          photometry_STR_sync_concat.timestamps(photometry_STR_sync_concat.barcodesOn(stimDur == 0.5))};
-data = photometry_STR_sync_concat.grabDA_z;
-timestamps = photometry_STR_sync_concat.timestamps;
+events = {photom_str.timestamps(photom_str.stimpulseOnOff(stimDur < 1,1)),...
+          photom_str.timestamps(photom_str.stimpulseOnOff(stimDur > 1,1))};
+data = photom_str.grabDA_z;
+timestamps = photom_str.timestamps;
 for e = 1:numel(events)  
-    etaHPC = byl_getETA(events{e},data,timestamps,'frequency',130);
+    etaSTR = byl_getETA(events{e},data,timestamps,'frequency',130);
 
     % Plot
-    plot(etaHPC.window, etaHPC.avg, 'color', orange(e,:), 'LineWidth', 2,...
+    plot(etaSTR.window, etaSTR.avg, 'color', orange(e,:), 'LineWidth', 2,...
         'DisplayName',events2plot{e});
-    x = [etaHPC.window, fliplr(etaHPC.window)];
-    y = [etaHPC.avg + etaHPC.sem, fliplr(etaHPC.avg - etaHPC.sem)];
+    x = [etaSTR.window, fliplr(etaSTR.window)];
+    y = [etaSTR.avg + etaSTR.sem, fliplr(etaSTR.avg - etaSTR.sem)];
     patch(x,y,orange(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
     
     
@@ -817,8 +840,8 @@ nexttile(35, [2 2]); cla; hold on;
 events2plot = {'rewarded','unrewarded'};
 events = {behavTrials.timestamps(logical(behavTrials.reward_outcome)),...
           behavTrials.timestamps(~logical(behavTrials.reward_outcome))};
-data = photometry_STR_sync_concat.grabDA_z;
-timestamps = photometry_STR_sync_concat.timestamps;
+data = photom_str.grabDA_z;
+timestamps = photom_str.timestamps;
 for e = 1:numel(events)  
     etaHPC = byl_getETA(events{e},data,timestamps,'frequency',130);
 
@@ -903,8 +926,8 @@ large = ripDurZ > 0 & ripAmpZ > 0;
 events2plot = {'large','small'};
 events = {ripples.timestamps(rippleBurst.solos & large,1),...
           ripples.timestamps(rippleBurst.solos & ~large,1)};
-data = photometry_HPC_sync_concat.grabDA_z;
-timestamps = photometry_HPC_sync_concat.timestamps;
+data = photom_hpc.grabDA_z;
+timestamps = photom_hpc.timestamps;
 for e = 1:numel(events)  
     etaHPC = byl_getETA(events{e},data,timestamps,'frequency',130);
 

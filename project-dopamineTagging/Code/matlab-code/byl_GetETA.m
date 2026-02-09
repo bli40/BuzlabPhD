@@ -105,20 +105,18 @@ tSampMatrix = tSampMatrix(keepEvent,:);
 eta_avg = mean(etaMatrix, 1);
 eta_std = std(etaMatrix, 0, 1);
 eta_sem = eta_std / sqrt(size(etaMatrix,1)-1);
-
-if ~strcmp(norm, 'none')
-    normedMat = normalize(etaMatrix,2,norm);
-    normedAvg = mean(normedMat,1);
-end
-
 eta = struct('avg',eta_avg, ...
              'std',eta_std, ...
              'sem',eta_sem, ...
              'window',tWind, ...
              'chunks',etaMatrix, ...
-             'timestamps',tSampMatrix, ...
-             'normChunks',normedMat, ...
-             'normAvg',normedAvg);
+             'timestamps',tSampMatrix);
+if ~strcmp(norm, 'none')
+    normedMat = normalize(etaMatrix,2,norm);
+    normedAvg = mean(normedMat,1);
+    eta.normChunks = normedMat;
+    eta.normAvg = normedAvg;
+end
 return
 
     

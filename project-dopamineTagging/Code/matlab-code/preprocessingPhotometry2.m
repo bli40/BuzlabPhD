@@ -210,9 +210,18 @@ parfor sp = 1:numel(sessionPaths)
 end
 
 %% Concatenate
-
+overwrite = true;
 disp('Loading data for concatenation...')
-for sp = 1:numel(sessionPaths)
+epochNames = {'sleep_1','behav_1','sleep_2'};
+for sp = 1%1:numel(sessionPaths)
+    preprocessedPaths = dir(fullfile(sessionPaths{sp},'\*.photometry.*.mat'));
+    if ~isempty(preprocessedPaths) && overwrite
+        fprintf('%d) Full photometry file exists. Overwriting\n',sp);
+    else
+        fprintf('%d) Full photometry file exists. Skipping\n',sp);
+        continue;
+    end
+
     syncPhotometryPaths = dir(fullfile(sessionPaths{sp},'*\*_new_photometry_sync.mat'));
 
     regions = fileTable.whichRegions{sp};
@@ -233,32 +242,52 @@ for sp = 1:numel(sessionPaths)
         c = epochIdx(k);
         syncArray{r,c} = load(fullfile(syncPhotometryPaths(k).folder,fname));
     end
-    fprintf('Synced Data Loaded.\n')
+    fprintf('\tSynchronized Data Loaded.\n')
 
     clear syncPhotometry
-    disp('Ready to concatenate.')
+    fprintf('\tReady to concatenate.\n')
 
     whichFiles = ~cellfun(@isempty, syncArray);
     fields = fieldnames(syncArray{find(whichFiles,1,'first')}.syncPhotometry);
 
     for re = 1:numRegions
+        cells = syncArray(re,:);
+        cells = cells(~cellfun(@isempty, cells));
+        structs = [cells{:}];
+        structs = [structs.syncPhotometry];
+
         for f = 1:numel(fields)
             fn = fields{f};
-            cells = syncArray(re,:);
-            cells = cells(~cellfun(@isempty, cells));
-            structs = [cells{:}];
-            structs = [structs.syncPhotometry];
             try
                 concPhotom.(fn) = vertcat(structs.(fn));
             catch
                 concPhotom.(fn) = horzcat(structs.(fn));
             end
         end
+        epochs = cellfun(@(x) [x.syncPhotometry.timestamps(1), x.syncPhotometry.timestamps(end)], ...
+            cells, 'UniformOutput', false);
+        epochs = vertcat(epochs{:});
+        concPhotom.epochs = epochs;
+        concPhotom.epochNames = epochNames(whichFiles(re,:));
+
         shortName = upper(extractAfter(regions{re},'_'));
         shortName = shortName(1:3);
         [~,name,~] = fileparts(sessionPaths{sp});
-        fprintf('<strong>%i) %s</strong> - %s concatenated.\n',sp,name,shortName)
+        fprintf('\t<strong>%i%s</strong> - %s concatenated.\n',sp,name,shortName)
         savepath = fullfile(sessionPaths{sp},join({name,'photometry',shortName,'mat'},'.'));
         save(savepath{:}, "concPhotom");
+
     end
+end
+%% delete old files
+clc
+for s = 1:numel(sessionPaths)
+    preprocessedPaths = dir(fullfile(sessionPaths{s},'\*.photometry.*.sync.conc.mat'));
+    for e = 1:numel(preprocessedPaths)
+        fprintf('<strong>%d) %s </strong>\n',s,preprocessedPaths(e).name);
+        delete(fullfile(preprocessedPaths(e).folder,preprocessedPaths(e).name));
+    end
+        
+
+
 end
