@@ -56,7 +56,8 @@ for s = 1:numel(sessionPaths)
     end
 
     epochsDataPaths = dir(fullfile(sessionPaths{s},'*\*.ppd'));
-    regions = unique(extractBefore({syncPhotometryPaths.name}, '-'));
+    regions = upper(unique(extractAfter(extractBefore({epochsDataPaths.name},'-'),'_')));
+    regions = cellfun(@(x) x(1:3), regions, 'UniformOutput', false);
     whichRegions{s} = regions;
     numEpochs(s) = numel(unique({epochsDataPaths.folder}));
     if numel(photometryDataPaths) == 0 || verbose
@@ -83,7 +84,7 @@ else
     fprintf('Starting Synchronization!\n');
 end
 tic;
-for sp = 1:numel(sessionPaths)
+for sp = 1%1:numel(sessionPaths)
     [~,session,~] = fileparts(sessionPaths{sp});
     fprintf(2,'<strong>Syncing %s\n</strong>',session);
     photometryDataPaths = dir(fullfile(sessionPaths{sp},'*\*_new_photometry.mat'));
@@ -102,9 +103,9 @@ for sp = 1:numel(sessionPaths)
         if isfile(savefile) 
             fprintf('\tAlready exists!\n\t%s\n',shortname')
             if overwrite
-                fprintf('\t-> Overwriting...\n');
+                fprintf('\t--> Overwriting...\n');
             else
-                fprintf('\t-> Skipping...\n');
+                fprintf('\t--> Skipping...\n');
                 continue;
             end
         else
@@ -261,8 +262,7 @@ for sp = 1%1:numel(sessionPaths)
             try
                 concPhotom.(fn) = vertcat(structs.(fn));
             catch
-                
-                concPhotom.(fn) = horzcat(structs.timestamps(structs.(fn)));
+                concPhotom.(fn) = horzcat(tructs.(fn));
             end
         end
         epochs = cellfun(@(x) [x.syncPhotometry.timestamps(1), x.syncPhotometry.timestamps(end)], ...

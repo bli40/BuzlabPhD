@@ -8,7 +8,6 @@
 % 5. sleep score
 % 6. cell Explorer
 
-cd Z:\\Buzsakilabspace\LabShare\ZutshiI\patchTask\N17\N17_250511_sess17\
 addpath('Z:\Buzsakilabspace\LabShare\PaleologosN\np_code\Event analysis')
 addpath('Z:\Buzsakilabspace\LabShare\PaleologosN\np_code\glucose code\State scoring\StateScoring_rodents')
 disp('Get components...');
@@ -32,8 +31,8 @@ end
 spikes = loadSpikes('getWaveformsFromDat', false);
 
 %% 4. Extract sharp wave ripples
-pyrCh = 121;  %75 for n11 115 67 for n11
-noiseCh = 111;
+pyrCh = 88;  %75 for n11 115 67 for n11
+noiseCh = 95;
 [ripples] = bz_FindRipples(pwd,pyrCh,'noise',noiseCh, ...
                                      'savemat',true, ...
                                      'durations',[30 200], ...
@@ -43,15 +42,18 @@ pyrCh = bz_GetLFP(ripples.detectorinfo.detectionchannel);
 ripLFP = bz_Filter(pyrCh.data,'passband',ripples.detectorinfo.detectionparms.passband);
 [maps,data,stats] = bz_RippleStats(ripLFP, pyrCh.timestamps,ripples);
 rippleStats = struct('maps',maps,'data',data','stats',stats);
-[~,name,~] = fileparts(sessionPaths{sesh});
+d = dir('*ripples.events.mat');
+
+[~,name,~] = fileparts(d.folder);
 save(join([name,'.ripples.stats.mat']),"rippleStats");
 
 %% 6. Sleep score
 % badChannels = [24:38 48:63]; %N7
 % badChannels = [0:3 15:18 21:30 43 50 95 97]; %N9
+badChannels = [20:38]; %N11
+% badChannels = [74]; %N14
 % badChannels = [0:3 15:18 21:30 41 43 46 47 50 52 95 97]; %N15
 % badChannels = [42 48 56:59 61 70 72]; %N17
-badChannels = [74]; %N14
 
 SleepScoreMaster(pwd,'stickytrigger',true,'rejectChannels',badChannels); % try to sleep score
 % SleepScoreMaster_km(pwd,'stickytrigger',true,'rejectChannels',badChannels); % try to sleep score
