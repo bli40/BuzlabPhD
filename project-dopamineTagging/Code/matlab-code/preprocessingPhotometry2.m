@@ -1,4 +1,4 @@
-%% Load Data Directory and filenames
+%% Load Data Directory and Check Preprocessing Progress
 clear all;
 close all;
 % clc;
@@ -261,7 +261,8 @@ for sp = 1%1:numel(sessionPaths)
             try
                 concPhotom.(fn) = vertcat(structs.(fn));
             catch
-                concPhotom.(fn) = horzcat(structs.(fn));
+                
+                concPhotom.(fn) = horzcat(structs.timestamps(structs.(fn)));
             end
         end
         epochs = cellfun(@(x) [x.syncPhotometry.timestamps(1), x.syncPhotometry.timestamps(end)], ...
@@ -273,9 +274,9 @@ for sp = 1%1:numel(sessionPaths)
         shortName = upper(extractAfter(regions{re},'_'));
         shortName = shortName(1:3);
         [~,name,~] = fileparts(sessionPaths{sp});
-        fprintf('\t<strong>%i%s</strong> - %s concatenated.\n',sp,name,shortName)
+        fprintf('\t<strong>%i) %s</strong> - %s concatenated.\n',sp,name,shortName)
         savepath = fullfile(sessionPaths{sp},join({name,'photometry',shortName,'mat'},'.'));
-        save(savepath{:}, "concPhotom");
+        % save(savepath{:}, "concPhotom");
 
     end
 end
