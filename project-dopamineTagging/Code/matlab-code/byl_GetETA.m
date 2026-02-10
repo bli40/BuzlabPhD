@@ -48,8 +48,6 @@ function eta = byl_getETA(events, data, timestamps, varargin)
 % 2026-01-31 by Brian Y. Li
 
 
-warning('this function is under development and may not work... yet')
-
 % Check number of parameters
 if nargin < 3
   error('Incorrect number of parameters.');

@@ -31,8 +31,8 @@ end
 spikes = loadSpikes('getWaveformsFromDat', false);
 
 %% 4. Extract sharp wave ripples
-pyrCh = 88;  %75 for n11 115 67 for n11
-noiseCh = 95;
+pyrCh = ripples.detectorinfo.detectionchannel;  %75 for n11 115 67 for n11
+noiseCh = ripples.detectorinfo.noisechannel;
 [ripples] = bz_FindRipples(pwd,pyrCh,'noise',noiseCh, ...
                                      'savemat',true, ...
                                      'durations',[30 200], ...

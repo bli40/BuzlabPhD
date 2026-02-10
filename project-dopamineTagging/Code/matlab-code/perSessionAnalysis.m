@@ -72,7 +72,9 @@ fileTable = table(hasConc, hasSync, hasMat, whichRegions, numEpochs, ...
     'VariableNames',{'hasConc','hasSync','hasMat','whichRegions','numEpochs'});
 
 %% Initialize
-sesh = 1;
+clearvars -except fileTable sessionPaths directory
+
+sesh = 3;
 
 cd(sessionPaths{sesh});
 [~,name,~] = fileparts(sessionPaths{sesh});
@@ -395,19 +397,24 @@ disp('done!')
 %}
 
 %% Custom Color Map
-red = customcolormap([0 0.5 1],[1 1 1; 0.5 0 0; 0 0 0],101);
-red = red([20 50 80],:);
-orange = customcolormap([0 0.65 1],[1 1 1; 0.9 0.4 0; 0 0 0],101);
-orange = orange([20 50 80],:);
-green = customcolormap([0 0.5 1],[1 1 1; 0 0.6 0.3; 0 0 0],101);
-green = green([20 50 80],:);
-blue = customcolormap([0 0.75 1],[1 1 1; 0 0 0.5; 0 0 0],101);
-blue = blue([20 50 80],:);
-purple = customcolormap([0 0.5 1],[1 1 1; 0.5 0 0.5; 0 0 0],101);
-purple = purple([20 50 80],:);
 
 
-% figure(69); colorbar; colormap(orange);
+ogCol = lines(7);
+expandCol = cell(1,numel(ogCol));
+for c = 1:size(ogCol,1)
+    expandCol{c} = customcolormap([0 0.5 1], [1 1 1; ogCol(c,:); 0 0 0],101);
+    expandCol{c} = expandCol{c}([20 50 80],:);
+end
+blue = expandCol{1};
+orange = expandCol{2};
+yellow = expandCol{3};
+purple = expandCol{4};
+green = expandCol{5};
+blue2 = expandCol{6};
+red = expandCol{7};
+
+
+figure(69); colorbar; colormap(ogCol);
 %% Master Plot
 [~,name,~] = fileparts(sessionPaths{sesh});
 % figure initiate
@@ -772,9 +779,9 @@ figure(10);
 nexttile(9, [2 2]); cla; hold on;
 if any(contains(fileTable(sesh,:).whichRegions{:},'HPC')) && ~isempty(stimOnOff)
 
-    events2plot = {'long VTA stim','short VTA stim'};
-    events = {photom_hpc.stimpulseOnOff(stimDur > 1,1),...
-              photom_hpc.stimpulseOnOff(stimDur < 1,1)};
+    events2plot = {'short VTA stim','long VTA stim'};
+    events = {photom_hpc.stimpulseOnOff(stimDur < 1,1),...
+              photom_hpc.stimpulseOnOff(stimDur > 1,1)};
     data = photom_hpc.grabDA_z;
     timestamps = photom_hpc.timestamps;
     for e = 1:numel(events)  
@@ -817,9 +824,9 @@ figure(10);
 nexttile(11, [2 2]); cla; hold on;
 if any(contains(fileTable(sesh,:).whichRegions{:},'HPC'))
 
-    events2plot = {'rewarded','unrewarded'};
-    events = {behavTrials.timestamps(logical(behavTrials.reward_outcome)),...
-              behavTrials.timestamps(~logical(behavTrials.reward_outcome))};
+    events2plot = {'unrewarded','rewarded'};
+    events = {behavTrials.timestamps(~logical(behavTrials.reward_outcome)),...
+              behavTrials.timestamps(logical(behavTrials.reward_outcome))};
     data = photom_hpc.grabDA_z;
     timestamps = photom_hpc.timestamps;
     for e = 1:numel(events)  
@@ -931,7 +938,7 @@ figure(10);
 nexttile(33, [2 2]); cla; hold on;
 if any(contains(fileTable(sesh,:).whichRegions{:},'STR')) && ~isempty(stimOnOff)
 
-    events2plot = {'long VTA stim','short VTA stim'};
+    events2plot = {'short VTA stim','long VTA stim'};
     events = {photom_str.stimpulseOnOff(stimDur < 1,1),...
               photom_str.stimpulseOnOff(stimDur > 1,1)};
     data = photom_str.grabDA_z;
@@ -976,9 +983,9 @@ figure(10);
 nexttile(35, [2 2]); cla; hold on;
 if any(contains(fileTable(sesh,:).whichRegions{:},'STR')) 
 
-    events2plot = {'rewarded','unrewarded'};
-    events = {behavTrials.timestamps(logical(behavTrials.reward_outcome)),...
-              behavTrials.timestamps(~logical(behavTrials.reward_outcome))};
+    events2plot = {'unrewarded','rewarded'};
+    events = {behavTrials.timestamps(~logical(behavTrials.reward_outcome)),...
+              behavTrials.timestamps(logical(behavTrials.reward_outcome))};
     data = photom_str.grabDA_z;
     timestamps = photom_str.timestamps;
     for e = 1:numel(events)  
@@ -1070,9 +1077,9 @@ nexttile(55, [2 2]); delete(gca);
 nexttile(55, [2 2]); cla; hold on;
 large = ripDurZ > 0 & ripAmpZ > 0;
 
-events2plot = {'large','small'};
-events = {ripples.timestamps(large,1),...
-          ripples.timestamps(~large,1)};
+events2plot = {'small','large'};
+events = {ripples.timestamps(~large,1),...
+          ripples.timestamps(large,1)};
 data = photom_hpc.grabDA_z;
 timestamps = photom_hpc.timestamps;
 for e = 1:numel(events)  
