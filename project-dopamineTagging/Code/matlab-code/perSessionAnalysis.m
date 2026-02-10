@@ -72,7 +72,7 @@ fileTable = table(hasConc, hasSync, hasMat, whichRegions, numEpochs, ...
     'VariableNames',{'hasConc','hasSync','hasMat','whichRegions','numEpochs'});
 
 %% Initialize
-sesh = 10;
+sesh = 1;
 
 cd(sessionPaths{sesh});
 [~,name,~] = fileparts(sessionPaths{sesh});
@@ -119,8 +119,8 @@ fprintf('%s - data loaded\n',name)
 % events_possible = {'Ripples','Stims','Nosepoke','Rewarded Poke', 'Unrewarded Poke'};
 % events_name = {'Ripples','Stims','Nosepoke','Rewarded Poke'};
 % events_list = {ripples.timestamps(:,1), ripples.timestamps(:,1);...
-%                photom_hpc.timestamps(photom_hpc.stimpulseOnOff(:,1)),...
-%                     photom_str.timestamps(photom_str.stimpulseOnOff(:,1));...
+%                photom_hpc.stimpulseOnOff(:,1)),...
+%                     photom_str.stimpulseOnOff(:,1));...
 %                behavTrials.timestamps, behavTrials.timestamps;...
 %                behavTrials.timestamps(logical(behavTrials.reward_outcome)),behavTrials.timestamps(logical(behavTrials.reward_outcome))};
 % 
@@ -237,7 +237,7 @@ rippleBurst = struct('solos', ripBurstIdx == 0,...
 fprintf('rippleBurst structure complete.\n');
 
 %% Mean Stimulation Time
-stimOnOff = photom_hpc.timestamps(photom_hpc.stimpulseOnOff);
+stimOnOff = photom_hpc.stimpulseOnOff;
 if ~isempty(stimOnOff)
     stimDur = stimOnOff(:,2) - stimOnOff(:,1);
 else
@@ -285,14 +285,14 @@ for e = 1:numel(events2plot)
             eventTimes_hpc = ripples.timestamps(:,1);
             eventTimes_str = ripples.timestamps(:,1);
         case "stims"
-            eventTimes_hpc = photom_hpc.timestamps(photom_hpc.stimpulseOnOff(:,1));
-            eventTimes_str = photom_str.timestamps(photom_str.stimpulseOnOff(:,1));
+            eventTimes_hpc = photom_hpc.stimpulseOnOff(:,1));
+            eventTimes_str = photom_str.stimpulseOnOff(:,1));
         case "long stim"
-            eventTimes_hpc = photom_hpc.timestamps(photom_hpc.stimpulseOnOff(stimDur > 1,1));
-            eventTimes_str = photom_str.timestamps(photom_str.stimpulseOnOff(stimDur > 1,1));
+            eventTimes_hpc = photom_hpc.stimpulseOnOff(stimDur > 1,1));
+            eventTimes_str = photom_str.stimpulseOnOff(stimDur > 1,1));
         case "short stim"
-            eventTimes_hpc = photom_hpc.timestamps(photom_hpc.stimpulseOnOff(stimDur < 1,1));
-            eventTimes_str = photom_str.timestamps(photom_str.stimpulseOnOff(stimDur < 1,1));
+            eventTimes_hpc = photom_hpc.stimpulseOnOff(stimDur < 1,1));
+            eventTimes_str = photom_str.stimpulseOnOff(stimDur < 1,1));
         case "nosepokes"
             eventTimes_hpc = behavTrials.timestamps;
             eventTimes_str = behavTrials.timestamps;
@@ -612,7 +612,7 @@ if any(contains(fileTable(sesh,:).whichRegions{:},'HPC'))
     plot(bursts(:,1),-6*ones(size(bursts(:,1))),'|b','MarkerSize',5);
     plot(behavTrials.timestamps,(-7.5)*ones(size(behavTrials.timestamps)),'|r','MarkerSize',5)
     if ~isempty(stimOnOff)
-        plot(photom_hpc.timestamps(photom_hpc.stimpulseOnOff(:,1)),(-9)*ones(size(photom_hpc.stimpulseOnOff(:,1))), ...
+        plot(photom_hpc.stimpulseOnOff(:,1),(-9)*ones(size(photom_hpc.stimpulseOnOff(:,1))), ...
             '|','Color',[0.3 0.3 0.3], 'MarkerSize',5)
     end
     text(photom_hpc.timestamps(end)+100,-4.5,'solos','FontSize',6,'Color','k')
@@ -651,8 +651,8 @@ if any(contains(fileTable(sesh,:).whichRegions{:},'STR'))
     plot(bursts(:,1),-6*ones(size(bursts(:,1))),'|b','MarkerSize',5);
     plot(behavTrials.timestamps,(-7-0.5)*ones(size(behavTrials.timestamps)),'|r','MarkerSize',5)
     if ~isempty(stimOnOff)
-        plot(photom_str.timestamps(photom_str.stimpulseOnOff(:,1)),(-9)*ones(size(photom_str.stimpulseOnOff(:,1))), ...
-            '|','Color',[0.3 0.3 0.3], 'MarkerSize',5)
+        plot(photom_str.stimpulseOnOff(:,1),(-9)*ones(size(photom_str.stimpulseOnOff(:,1))), ...
+            '|','Color',[0.3 0.3 0.3], 'MarkerSize',5);
     end
     text(photom_str.timestamps(end)+100,-5+0.5,'solos','FontSize',6,'Color','k')
     text(photom_str.timestamps(end)+100,-6,'bursts','FontSize',6,'Color','b')
@@ -773,8 +773,8 @@ nexttile(9, [2 2]); cla; hold on;
 if any(contains(fileTable(sesh,:).whichRegions{:},'HPC')) && ~isempty(stimOnOff)
 
     events2plot = {'long VTA stim','short VTA stim'};
-    events = {photom_hpc.timestamps(photom_hpc.stimpulseOnOff(stimDur > 1,1)),...
-              photom_hpc.timestamps(photom_hpc.stimpulseOnOff(stimDur < 1,1))};
+    events = {photom_hpc.stimpulseOnOff(stimDur > 1,1),...
+              photom_hpc.stimpulseOnOff(stimDur < 1,1)};
     data = photom_hpc.grabDA_z;
     timestamps = photom_hpc.timestamps;
     for e = 1:numel(events)  
@@ -932,8 +932,8 @@ nexttile(33, [2 2]); cla; hold on;
 if any(contains(fileTable(sesh,:).whichRegions{:},'STR')) && ~isempty(stimOnOff)
 
     events2plot = {'long VTA stim','short VTA stim'};
-    events = {photom_str.timestamps(photom_str.stimpulseOnOff(stimDur < 1,1)),...
-              photom_str.timestamps(photom_str.stimpulseOnOff(stimDur > 1,1))};
+    events = {photom_str.stimpulseOnOff(stimDur < 1,1),...
+              photom_str.stimpulseOnOff(stimDur > 1,1)};
     data = photom_str.grabDA_z;
     timestamps = photom_str.timestamps;
     for e = 1:numel(events)  
