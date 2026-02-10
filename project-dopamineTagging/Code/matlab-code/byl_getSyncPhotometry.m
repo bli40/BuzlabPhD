@@ -53,7 +53,11 @@ function syncPhotometry = byl_getSyncPhotometry(photometryData, intanData)
     %Shift photometry signal to match intan timestamps
     tPhotDs = tPhot + timeShift ;
     syncPhotometry.sampling_rate = photometryData.sampling_rate;
-    syncPhotometry.stimpulseOnOff = tPhotDs(photometryData.stimpulseOnOff);
+    if ~isempty(photometryData.stimpulseOnOff)
+        syncPhotometry.stimpulseOnOff = tPhotDs(photometryData.stimpulseOnOff);
+    else
+        syncPhotometry.stimpulseOnOff = photometryData.stimpulseOnOff;
+    end
     syncPhotometry.syncpulseOnOff = tPhotDs(photometryData.syncpulseOnOff);
     syncPhotometry.highLowStim = photometryData.highLowStim;
     syncPhotometry.highLowSync = photometryData.highLowSync;

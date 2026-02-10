@@ -84,7 +84,7 @@ else
     fprintf('Starting Synchronization!\n');
 end
 tic;
-for sp = 1:numel(sessionPaths)
+for sp = 4:numel(sessionPaths)
     [~,session,~] = fileparts(sessionPaths{sp});
     fprintf(2,'<strong>Syncing %s\n</strong>',session);
     photometryDataPaths = dir(fullfile(sessionPaths{sp},'*\*_new_photometry.mat'));
