@@ -58,7 +58,12 @@ function syncPhotometry = byl_getSyncPhotometry(photometryData, intanData)
     else
         syncPhotometry.stimpulseOnOff = photometryData.stimpulseOnOff;
     end
-    syncPhotometry.syncpulseOnOff = tPhotDs(photometryData.syncpulseOnOff);
+    try
+        syncPhotometry.syncpulseOnOff = tPhotDs(photometryData.syncpulseOnOff);
+    catch
+        syncPhotometry.syncpulseOnOff = (photometryData.syncpulseOnOff);
+        fprintf(2,'\t\tsyncpulseOnOff extraction error.\n');
+    end
     syncPhotometry.highLowStim = photometryData.highLowStim;
     syncPhotometry.highLowSync = photometryData.highLowSync;
     syncPhotometry.timestamps = tPhotDs';
