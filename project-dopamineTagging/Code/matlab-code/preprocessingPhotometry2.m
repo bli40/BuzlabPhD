@@ -17,9 +17,9 @@ sesh = 1;
 
 [hasConc, hasSync, hasMat, numEpochs] = deal(zeros(size(directory,1),1));
 whichRegions = cell(size(directory,1),1);
-verbose = false;
+verbose = true;
 
-for s = 1:numel(sessionPaths)
+for s = 23:24%1:numel(sessionPaths)
     preprocessedPaths = dir(fullfile(sessionPaths{s},'\*.photometry.*.mat'));
     [~,name,~] = fileparts(sessionPaths{s});
     fprintf('<strong>%d) %s </strong>\n',s,name)
@@ -61,21 +61,21 @@ for s = 1:numel(sessionPaths)
     whichRegions{s} = regions;
     numEpochs(s) = numel(unique({epochsDataPaths.folder}));
     if numel(photometryDataPaths) == 0 || verbose
-        regions = unique(extractBefore({syncPhotometryPaths.name}, '-'));
+        regName = unique(extractBefore({epochsDataPaths.name}, '-'));
         for i = 1:numel(regions)
-            fprintf('\t%s - %i files ready to <strong>preprocess</strong>.\n', regions{i}, sum(contains({epochsDataPaths.name},regions{i})));
-            fprintf('\t\t%s\n',epochsDataPaths(contains({epochsDataPaths.name},regions{i})).name);
+            fprintf('\t%s - %i files ready to <strong>preprocess</strong>.\n', regName{i}, sum(contains(upper({epochsDataPaths.name}),regions{i})));
+            fprintf('\t\t%s\n',epochsDataPaths(contains(upper({epochsDataPaths.name}),regions{i})).name);
         end
     end
 end
-cd(sessionPaths{sesh});
 
 fileTable = table(hasConc, hasSync, hasMat, whichRegions, numEpochs, ...
     'VariableNames',{'hasConc','hasSync','hasMat','whichRegions','numEpochs'});
 
 %% Sync Pre-Processed Photometry Data
+cd(sessionPaths{24});
 
-overwrite = true;
+overwrite = false;
 dryrun = false;
 clc;
 if dryrun
@@ -84,7 +84,7 @@ else
     fprintf('Starting Synchronization!\n');
 end
 tic;
-for sp = 4:numel(sessionPaths)
+for sp = 24%4:numel(sessionPaths)
     [~,session,~] = fileparts(sessionPaths{sp});
     fprintf(2,'<strong>Syncing %s\n</strong>',session);
     photometryDataPaths = dir(fullfile(sessionPaths{sp},'*\*_new_photometry.mat'));
@@ -93,6 +93,13 @@ for sp = 4:numel(sessionPaths)
         return;
     end
     intanDataPaths = fullfile(sessionPaths{sp},'digitalin.dat');
+    if ~isfile(intanDataPaths)
+        intanDataPaths = dir(fullfile(sessionPaths{sp},'*\digitalin.dat'));
+        intanDataPaths = fullfile(intanDataPaths.folder, intanDataPaths.name);
+        if ~isfile(intanDataPaths)
+            fprintf(2,'No digitalin.dat file found!!');
+        end
+    end
     for e = 1:numel(photometryDataPaths)
         fprintf('\t<strong>Epoch</strong> - %s\n',photometryDataPaths(e).name);
         filename = fullfile(photometryDataPaths(e).folder,photometryDataPaths(e).name);
@@ -216,11 +223,11 @@ end
 overwrite = true;
 disp('Loading data for concatenation...')
 epochNames = {'sleep_1','behav_1','sleep_2'};
-for sp = 1:numel(sessionPaths)
+for sp = 24%1:numel(sessionPaths)
     preprocessedPaths = dir(fullfile(sessionPaths{sp},'\*.photometry.*.mat'));
     if ~isempty(preprocessedPaths) && overwrite
         fprintf('%d) Full photometry file exists. Overwriting\n',sp);
-    else
+    elseif ~isempty(preprocessedPaths) && ~ overwrite
         fprintf('%d) Full photometry file exists. Skipping\n',sp);
         continue;
     end

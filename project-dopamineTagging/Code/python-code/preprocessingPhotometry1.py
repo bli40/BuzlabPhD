@@ -22,14 +22,17 @@ df = pd.DataFrame({
     "Use": directory.Use,
     "Session": [p.split('\\')[-1] for p in directory.Path],
     "Path": directory.Path})
+print(df.Session)
 
 # create new "Use" column if need be:
-idx = df.Use == 1;
-print(df.Session[idx])
-
+sesh2run = df.iloc[-1]
+print('Sessions to run\n')
+for sesh in [sesh2run.Session]:
+    print(sesh)
+    
 answer = input("Continue? [y/n]: ")
 if answer.lower() in ["y","yes"]:
-    for sesh in df.Path:
+    for sesh in [sesh2run.Path]:
         print(sesh)
         data_folder = Path(sesh)
         
