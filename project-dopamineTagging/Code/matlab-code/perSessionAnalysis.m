@@ -71,11 +71,11 @@ end
 fileTable = table(hasConc, hasSync, hasMat, whichRegions, numEpochs, ...
     'VariableNames',{'hasConc','hasSync','hasMat','whichRegions','numEpochs'});
 
+
 %% Initialize
 clearvars -except fileTable sessionPaths directory
 
-sesh = 3;
-
+sesh = 10;
 cd(sessionPaths{sesh});
 [~,name,~] = fileparts(sessionPaths{sesh});
 
@@ -938,7 +938,7 @@ figure(10);
 nexttile(33, [2 2]); cla; hold on;
 if any(contains(fileTable(sesh,:).whichRegions{:},'STR')) && ~isempty(stimOnOff)
 
-    events2plot = {'short VTA stim','long VTA stim'};
+    events2plot = {'short stim','long stim'};
     events = {photom_str.stimpulseOnOff(stimDur < 1,1),...
               photom_str.stimpulseOnOff(stimDur > 1,1)};
     data = photom_str.grabDA_z;
@@ -957,9 +957,9 @@ if any(contains(fileTable(sesh,:).whichRegions{:},'STR')) && ~isempty(stimOnOff)
     end
     xlabel('Time from event (s)');
     ylabel('Fluorescence (z-score');
-    title(sprintf('Poke/Stim-Triggered Average\nSTR DA (behavior)'));
+    title(sprintf('VTA Stim-Triggered Average\nSTR DA (behavior)'));
     grid on;
-    legend('location','best');
+    legend('location','northwest');
     set(gca,'children',flipud(get(gca,'children')))
 elseif ~any(contains(fileTable(sesh,:).whichRegions{:},'STR'))
     set(gca, 'Color', 'none'); % Axes background   
