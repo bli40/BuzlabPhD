@@ -84,7 +84,7 @@ else
     fprintf('Starting Synchronization!\n');
 end
 tic;
-for sp = 24%4:numel(sessionPaths)
+for sp = 1:numel(sessionPaths)
     [~,session,~] = fileparts(sessionPaths{sp});
     fprintf(2,'<strong>Syncing %s\n</strong>',session);
     photometryDataPaths = dir(fullfile(sessionPaths{sp},'*\*_new_photometry.mat'));
@@ -223,12 +223,12 @@ end
 overwrite = true;
 disp('Loading data for concatenation...')
 epochNames = {'sleep_1','behav_1','sleep_2'};
-for sp = 24%1:numel(sessionPaths)
+for sp = 1%:numel(sessionPaths)
     preprocessedPaths = dir(fullfile(sessionPaths{sp},'\*.photometry.*.mat'));
     if ~isempty(preprocessedPaths) && overwrite
-        fprintf('%d) Full photometry file exists. Overwriting\n',sp);
+        fprintf('%d) Full photometry file exists. Overwriting.\n',sp);
     elseif ~isempty(preprocessedPaths) && ~ overwrite
-        fprintf('%d) Full photometry file exists. Skipping\n',sp);
+        fprintf('%d) Full photometry file exists. Skipping.\n',sp);
         continue;
     end
 
@@ -275,11 +275,21 @@ for sp = 24%1:numel(sessionPaths)
                 concPhotom.(fn) = horzcat(structs.(fn));
             end
         end
+        % --- interpolate to regularize timestamps
+        concPhotom.sampling_rate = double(unique(concPhotom.sampling_rate));
+        ts = concPhotom.timestamps(1) : 1/concPhotom.sampling_rate : concPhotom.timestamps(end);
+        concPhotom.grabDA_df  = interp1(concPhotom.timestamps, concPhotom.grabDA_df, ts);
+        concPhotom.grabDA_z   = interp1(concPhotom.timestamps, concPhotom.grabDA_z,  ts);
+        concPhotom.grabDA_raw = interp1(concPhotom.timestamps, concPhotom.grabDA_raw,ts);
+        concPhotom.timestamps = ts;
+        % --- generate epoch names and timestamps
         epochs = cellfun(@(x) [x.syncPhotometry.timestamps(1), x.syncPhotometry.timestamps(end)], ...
             cells, 'UniformOutput', false);
         epochs = vertcat(epochs{:});
         concPhotom.epochs = epochs;
         concPhotom.epochNames = epochNames(whichFiles(re,:));
+
+
 
         [~,name,~] = fileparts(sessionPaths{sp});
         fprintf('\t<strong>%i) %s</strong> - %s concatenated.\n',sp,name,regions{re})

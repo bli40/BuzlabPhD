@@ -1,4 +1,4 @@
-function eta = byl_getETA(events, data, timestamps, varargin)
+function eta = byl_getETA_old(events, data, timestamps, varargin)
 %byl_GetETA - Plot event-triggered averages for any waveform
 %
 %
@@ -48,12 +48,12 @@ function eta = byl_getETA(events, data, timestamps, varargin)
 % 2026-01-31 by Brian Y. Li
 
 
-% --- Check number of parameters ---
+% Check number of parameters
 if nargin < 3
   error('Incorrect number of parameters.');
 end
 
-% --- Default values ---
+% Default values
 p = inputParser;
 addParameter(p,'durations',[-5 5],@isnumeric)
 addParameter(p,'frequency',1250,@isnumeric)
@@ -61,7 +61,7 @@ addParameter(p,'show','off',@isstr)
 addParameter(p,'normalization','none',@isstr)
 parse(p,varargin{:})
 
-% --- assign parameters (either defaults or given) ---
+% assign parameters (either defaults or given)
 events = events;
 xSeries = data;
 tSeries = timestamps;
@@ -70,34 +70,27 @@ frequency = p.Results.frequency;
 show = p.Results.show;
 norm = p.Results.normalization;
 
-% --- Parameters ---
+% Parameters
 fs = frequency;           % LFP sampling rate (Hz)
 pre  = durations(1);      % seconds before spike
 post = durations(2);      % seconds after spike
 
-% --- Define sample indices ---
+% Define relative time axis (not samples)
 tWind = pre : 1/fs : post;
 winLength = numel(tWind);
-winSamples = round(tWind * fs);
 
-% --- Convert events to sample indices ---
-t0 = timestamps(1);
-eventIdx = round((events - t0) * fs) + 1;
-nData = numel(data);
-
-% --- Preallocate ---
 etaMatrix = nan(numel(events), winLength);
 tSampMatrix = nan(numel(events), winLength);
 keepEvent = false(numel(events),1);
 for i = 1:numel(events)
-    idx = eventIdx(i) + winSamples;
+    tSample = events(i) + tWind;
 
-    if idx(1) < 1 || idx(end) > nData
+    if tSample(1) < tSeries(1) || tSample(end) > tSeries(end)
         continue
     end
 
-    etaMatrix(i,:) = data(idx);
-    tSampMatrix(i,:) = timestamps(idx);
+    etaMatrix(i,:) = interp1(tSeries, xSeries, tSample, 'linear');
+    tSampMatrix(i,:) = tSample;
     keepEvent(i) = true;
 end
     
@@ -106,7 +99,7 @@ tSampMatrix = tSampMatrix(keepEvent,:);
 
 
 
-% --- Compute Statistics ---
+% Event-triggered average
 eta_avg = mean(etaMatrix, 1);
 eta_std = std(etaMatrix, 0, 1);
 eta_sem = eta_std / sqrt(size(etaMatrix,1));
@@ -116,7 +109,6 @@ eta = struct('avg',eta_avg, ...
              'window',tWind, ...
              'chunks',etaMatrix, ...
              'timestamps',tSampMatrix);
-% --- Optional normalization ---
 if ~strcmp(norm, 'none')
     normedMat = normalize(etaMatrix,2,norm);
     normedAvg = mean(normedMat,1);

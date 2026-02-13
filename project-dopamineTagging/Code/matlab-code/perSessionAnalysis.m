@@ -697,8 +697,7 @@ end
 
 
 
-%% >>> ETA: solos, duos, trios hippocampus (sleep)
-% create color scheme
+%% >>> ETA: solos, duos, trios hippocampus (sleep) !!!!!!!
 f1 = figure(10);
 nexttile(5, [2 2]); delete(gca);
 nexttile(5, [2 2]); cla; hold on;
@@ -722,9 +721,9 @@ if any(contains(fileTable(sesh,:).whichRegions{:},'HPC'))
         % Plot
         plot(etaHPC.window, etaHPC.avg, 'color', blue(e,:), 'LineWidth', 2,...
             'DisplayName',events2plot{e});
-        x = [etaHPC.window, fliplr(etaHPC.window)];
+        x1 = [etaHPC.window, fliplr(etaHPC.window)];
         y = [etaHPC.avg + etaHPC.sem, fliplr(etaHPC.avg - etaHPC.sem)];
-        patch(x,y,blue(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');    
+        patch(x1,y,blue(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');    
     end
     patch([0 mean(solo) mean(solo) 0],...
           [-0.2 -0.2 -0.17 -0.17], ...
@@ -771,9 +770,9 @@ if any(contains(fileTable(sesh,:).whichRegions{:},'HPC'))
         % Plot
         plot(etaHPC.window, etaHPC.avg, 'color', blue(e,:), 'LineWidth', 2,...
             'DisplayName',events2plot{e});
-        x = [etaHPC.window, fliplr(etaHPC.window)];
+        x1 = [etaHPC.window, fliplr(etaHPC.window)];
         y = [etaHPC.avg + etaHPC.sem, fliplr(etaHPC.avg - etaHPC.sem)];
-        patch(x,y,blue(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
+        patch(x1,y,blue(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
     end
     xlabel('Time from event (s)');
     ylabel('Fluorescence (z-score');
@@ -806,9 +805,9 @@ if any(contains(fileTable(sesh,:).whichRegions{:},'HPC')) && ~isempty(stimOnOff)
         % Plot
         plot(etaHPC.window, etaHPC.avg, 'color', purple(e,:), 'LineWidth', 2,...
             'DisplayName',events2plot{e});
-        x = [etaHPC.window, fliplr(etaHPC.window)];
+        x1 = [etaHPC.window, fliplr(etaHPC.window)];
         y = [etaHPC.avg + etaHPC.sem, fliplr(etaHPC.avg - etaHPC.sem)];
-        patch(x,y,purple(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
+        patch(x1,y,purple(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
         
         
     end
@@ -851,9 +850,9 @@ if any(contains(fileTable(sesh,:).whichRegions{:},'HPC'))
         % Plot
         plot(etaHPC.window, etaHPC.avg, 'color', purple(e,:), 'LineWidth', 2,...
             'DisplayName',events2plot{e});
-        x = [etaHPC.window, fliplr(etaHPC.window)];
+        x1 = [etaHPC.window, fliplr(etaHPC.window)];
         y = [etaHPC.avg + etaHPC.sem, fliplr(etaHPC.avg - etaHPC.sem)];
-        patch(x,y,purple(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
+        patch(x1,y,purple(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
         
         
     end
@@ -891,9 +890,9 @@ if any(contains(fileTable(sesh,:).whichRegions{:},'STR'))
         % Plot
         plot(etaHPC.window, etaHPC.avg, 'color', red(e,:), 'LineWidth', 2,...
             'DisplayName',events2plot{e});
-        x = [etaHPC.window, fliplr(etaHPC.window)];
+        x1 = [etaHPC.window, fliplr(etaHPC.window)];
         y = [etaHPC.avg + etaHPC.sem, fliplr(etaHPC.avg - etaHPC.sem)];
-        patch(x,y,red(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
+        patch(x1,y,red(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
         
     end
     xlabel('Time from event (s)');
@@ -930,9 +929,9 @@ if any(contains(fileTable(sesh,:).whichRegions{:},'STR'))
         % Plot
         plot(etaHPC.window, etaHPC.avg, 'color', red(e,:), 'LineWidth', 2,...
             'DisplayName',events2plot{e});
-        x = [etaHPC.window, fliplr(etaHPC.window)];
+        x1 = [etaHPC.window, fliplr(etaHPC.window)];
         y = [etaHPC.avg + etaHPC.sem, fliplr(etaHPC.avg - etaHPC.sem)];
-        patch(x,y,red(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
+        patch(x1,y,red(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
     end
     xlabel('Time from event (s)');
     ylabel('Fluorescence (z-score');
@@ -965,9 +964,9 @@ if any(contains(fileTable(sesh,:).whichRegions{:},'STR')) && ~isempty(stimOnOff)
         % Plot
         plot(etaSTR.window, etaSTR.avg, 'color', orange(e,:), 'LineWidth', 2,...
             'DisplayName',events2plot{e});
-        x = [etaSTR.window, fliplr(etaSTR.window)];
+        x1 = [etaSTR.window, fliplr(etaSTR.window)];
         y = [etaSTR.avg + etaSTR.sem, fliplr(etaSTR.avg - etaSTR.sem)];
-        patch(x,y,orange(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
+        patch(x1,y,orange(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
         
         
     end
@@ -1011,9 +1010,9 @@ if any(contains(fileTable(sesh,:).whichRegions{:},'STR'))
         % Plot
         plot(etaHPC.window, etaHPC.avg, 'color', orange(e,:), 'LineWidth', 2,...
             'DisplayName',events2plot{e});
-        x = [etaHPC.window, fliplr(etaHPC.window)];
+        x1 = [etaHPC.window, fliplr(etaHPC.window)];
         y = [etaHPC.avg + etaHPC.sem, fliplr(etaHPC.avg - etaHPC.sem)];
-        patch(x,y,orange(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
+        patch(x1,y,orange(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
         
         
     end
@@ -1075,15 +1074,15 @@ stdLarge = std(rippleStats.maps.ripples(large),0,1);
 t = 1:size(rippleStats.maps.ripples,2);
 
 plot(t,meanLarge,'-b','DisplayName','large')
-x = [t, fliplr(t)];
+x1 = [t, fliplr(t)];
 y = [meanLarge + stdLarge, fliplr(meanLarge - stdLarge)];
-patch(x,y,'b','FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
+patch(x1,y,'b','FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
 
 
 plot(t+t(end),meanSmall,'-k','DisplayName','small')
-x = [t+t(end), fliplr(t+t(end))];
+x1 = [t+t(end), fliplr(t+t(end))];
 y = [meanSmall + stdSmall, fliplr(meanSmall - stdSmall)];
-patch(x,y,'k','FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
+patch(x1,y,'k','FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
 xticks([94, 281])
 xticklabels({'large','small'});
 yticklabels('');
@@ -1105,9 +1104,9 @@ for e = 1:numel(events)
     % Plot
     plot(etaHPC.window, etaHPC.avg, 'color', green(e,:), 'LineWidth', 2,...
         'DisplayName',events2plot{e});
-    x = [etaHPC.window, fliplr(etaHPC.window)];
+    x1 = [etaHPC.window, fliplr(etaHPC.window)];
     y = [etaHPC.avg + etaHPC.sem, fliplr(etaHPC.avg - etaHPC.sem)];
-    patch(x,y,green(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
+    patch(x1,y,green(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
 end
 smallStats = mean(rippleStats.data.duration(~large));
 largeStats = mean(rippleStats.data.duration(large));
@@ -1130,77 +1129,99 @@ ylim(yLimHPCsleep);
 
 
 %% > SandBox: Control - Random Subsample of Solos
-f = figure(1); clf; hold on;
+fprintf('Control Analyses\n')
+f = figure(2); clf; hold on;
 f.Units = 'normalized';
 f.Position = [0 0.05 1 0.865];
-% tiledlayout(2,3,'TileSpacing','tight','Padding','tight');
-% sgtitle(sprintf('%s',name),'Interpreter','none');
+tiledlayout(5,8,'TileSpacing','tight','Padding','tight');
+sgtitle(sprintf('%s',name),'Interpreter','none');
 
-subplot(2,3,1); hold on;
+% --- ORIGINAL TRACE
+fprintf('Original trace\n')
+nexttile(3, [2 2]); cla; hold on;
 events2plot = {'solos','duos','trios'};
-events = {ripples.timestamps(rippleBurst.solos,1),...
-          ripples.timestamps(rippleBurst.duos,1),...
-          ripples.timestamps(rippleBurst.trios,1)};
+events = {rippleBurst.soloTimes(:,1),...
+          rippleBurst.burstTimes(rippleBurst.burstNum == 2,1),...
+          rippleBurst.burstTimes(rippleBurst.burstNum == 3,1)};
 data = photom_hpc.grabDA_z;
 timestamps = photom_hpc.timestamps;
 
-if ~exist('eta')
-    eta{1} = byl_getETA(events{1},data,timestamps,'frequency',130,'normalization','zscore');
-    eta{2} = byl_getETA(events{2},data,timestamps,'frequency',130,'normalization','zscore');
-    eta{3} = byl_getETA(events{3},data,timestamps,'frequency',130,'normalization','zscore');
-    eta{4} = byl_getETA(ripples.timestamps(:,1),data,timestamps,'frequency',130,'normalization','zscore');
-end
+durations = [-5 5];
+eta{1} = byl_getETA(events{1},data,timestamps,'frequency',130,'normalization','zscore','durations',durations);
+eta{2} = byl_getETA(events{2},data,timestamps,'frequency',130,'normalization','zscore','durations',durations);
+eta{3} = byl_getETA(events{3},data,timestamps,'frequency',130,'normalization','zscore','durations',durations);
+eta{4} = byl_getETA(ripples.timestamps(:,1),data,timestamps,'frequency',130,'normalization','zscore','durations',durations);
+
 
 numelSolos = sum(rippleBurst.solos);
 numelDuos = sum(rippleBurst.duos);
 numelTrios = sum(rippleBurst.trios);
 
-subplot(2,3,1); hold on;
 for e = 1:numel(events)  
     plot(eta{e}.window, eta{e}.avg, 'color', blue(e,:), 'LineWidth', 2,...
         'DisplayName',events2plot{e});
-    x = [eta{e}.window, fliplr(eta{e}.window)];
+    x1 = [eta{e}.window, fliplr(eta{e}.window)];
     y = [eta{e}.avg + eta{e}.sem, fliplr(eta{e}.avg - eta{e}.sem)];
-    patch(x,y,blue(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');    
+    patch(x1,y,blue(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');    
 end
 
 xlabel('Time from event (s)');
-ylabel('Fluorescence (z-score');
+ylabel('Fluorescence (z-score)');
 title(sprintf('Ripple-Triggered Average\nHPC DA (whole session)'));
 grid on;
 legend('location','northwest');
 set(gca,'children',flipud(get(gca,'children')))
 YLref = ylim;
 
+% % --- BOOTSTRAP
+% fprintf('Bootstrap\n')
+% nexttile(5, [2 2]); cla; hold on;
+% permNum = 100;
+% subsampNum = 30;
+% for e = 1:numel(events)
+%     perm = nan(permNum,numel(eta{e}.window));
+%     for i = 1:permNum
+%         ripNum = randperm(size(eta{e}.chunks,1));
+%         ripNum = ripNum(1:subsampNum);
+%         perm(i,:) = mean(eta{e}.chunks(ripNum,:),1);
+%     end
+%     newAvg = mean(perm,1);
+%     newSem = std(perm,0,1) / sqrt(permNum);
+%     plot(eta{e}.window, newAvg, 'color', red(e,:), 'LineWidth', 2,...
+%         'DisplayName',events2plot{e});
+%     x = [eta{e}.window, fliplr(eta{e}.window)];
+%     y = [newAvg + newSem, fliplr(newAvg - newSem)];
+%     patch(x,y,red(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');  
+% end
+% xlabel('Time from event (s)');
+% ylabel('Fluorescence (z-score');
+% title(sprintf('bootstrap'));
+% grid on;
+% legend('location','northwest');
+% set(gca,'children',flipud(get(gca,'children')))
+% ylim(YLref);
 
-subplot(2,3,2); hold on;
-permNum = 100;
-subsampNum = 30;
-for e = 1:numel(events)
-    perm = nan(permNum,numel(eta{e}.window));
-    for i = 1:permNum
-        ripNum = randperm(size(eta{e}.chunks,1));
-        ripNum = ripNum(1:subsampNum);
-        perm(i,:) = mean(eta{e}.chunks(ripNum,:),1);
-    end
-    newAvg = mean(perm,1);
-    newSem = std(perm,0,1) / sqrt(permNum);
-    plot(eta{e}.window, newAvg, 'color', yellow(e,:), 'LineWidth', 2,...
+% --- Z-SCORE BY RIPPLE
+fprintf('Z-score\n')
+nexttile(5, [2 2]); cla; hold on;
+for e = 1:numel(events)  
+    plot(eta{e}.window, eta{e}.normAvg, 'color', red(e,:), 'LineWidth', 2,...
         'DisplayName',events2plot{e});
-    x = [eta{e}.window, fliplr(eta{e}.window)];
-    y = [newAvg + newSem, fliplr(newAvg - newSem)];
-    patch(x,y,yellow(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');  
+    x1 = [eta{e}.window, fliplr(eta{e}.window)];
+    y = [eta{e}.normAvg + eta{e}.normSem, fliplr(eta{e}.normAvg - eta{e}.normSem)];
+    patch(x1,y,red(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');    
 end
+  
 xlabel('Time from event (s)');
-ylabel('Fluorescence (z-score');
-title(sprintf('bootstrap'));
+ylabel('Fluorescence (z-score)');
+title(sprintf('z-score per event'));
 grid on;
 legend('location','northwest');
 set(gca,'children',flipud(get(gca,'children')))
-ylim(YLref);
 
-
-subplot(2,3,3); hold on;
+% --- RANDOM SUBSAMPLE
+fprintf('Random subsample\n')
+nexttile(7, [2 2]); hold on;
 permNum = 100;
 for e = 1:numel(events)
     perm = nan(permNum,numel(eta{e}.window));
@@ -1211,33 +1232,322 @@ for e = 1:numel(events)
     end
     newAvg = mean(perm,1);
     newSem = std(perm,0,1) / sqrt(permNum);
-    plot(eta{e}.window, newAvg, 'color', yellow(e,:), 'LineWidth', 2,...
+    plot(eta{e}.window, newAvg, 'color', orange(e,:), 'LineWidth', 2,...
         'DisplayName',events2plot{e});
-    x = [eta{e}.window, fliplr(eta{e}.window)];
+    x1 = [eta{e}.window, fliplr(eta{e}.window)];
     y = [newAvg + newSem, fliplr(newAvg - newSem)];
-    patch(x,y,yellow(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');  
+    patch(x1,y,orange(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');  
 end
 xlabel('Time from event (s)');
-ylabel('Fluorescence (z-score');
+ylabel('Fluorescence (z-score)');
 title(sprintf('random subsample'));
 grid on;
 legend('location','northwest');
 set(gca,'children',flipud(get(gca,'children')))
 ylim(YLref);
 
-subplot(2,3,4); hold on;
-for e = 1:numel(events)  
-    plot(eta{e}.window, eta{e}.avg, 'color', blue(e,:), 'LineWidth', 2,...
-        'DisplayName',events2plot{e});
-    x = [eta{e}.window, fliplr(eta{e}.window)];
-    y = [eta{e}.avg + eta{e}.sem, fliplr(eta{e}.avg - eta{e}.sem)];
-    patch(x,y,blue(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');    
-end
 
+% --- CIRCULAR SHIFT 
+fprintf('Circular shift\n   ')
+nexttile(23, [2 2]); hold on;
+permNum = 50;
+zz = permNum * numel(events);
+for e = 1:numel(events)
+    perm = nan(permNum,numel(eta{e}.window));
+    for i = 1:permNum
+        etaCS = byl_getETA(events{e},circshift(data,randi(numel(data))), ...
+            timestamps,'frequency',130,'normalization','zscore','durations',durations);
+        perm(i,:) = etaCS.avg;
+
+        if mod((((e-1)*permNum)+i),10)==0
+            if (((e-1)*permNum)+i)~=10
+                fprintf(repmat('\b',[1 length([num2str(round(100*(((e-1)*permNum)+i)/zz)), ' percent complete'])]))
+            end
+            fprintf('%d percent complete', round(100*(((e-1)*permNum)+i)/zz));
+        end
+    end
+    newAvg = mean(perm,1);
+    newSem = std(perm,0,1) / sqrt(permNum);
+    plot(eta{e}.window, newAvg, 'color', yellow(e,:), 'LineWidth', 2,...
+        'DisplayName',events2plot{e});
+    x1 = [eta{e}.window, fliplr(eta{e}.window)];
+    y = [newAvg + newSem, fliplr(newAvg - newSem)];
+    patch(x1,y,yellow(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');  
+end
 xlabel('Time from event (s)');
-ylabel('Fluorescence (z-score');
-title(sprintf('Ripple-Triggered Average\nHPC DA (whole session)'));
+ylabel('Fluorescence (z-score)');
+title(sprintf('circular shift'));
 grid on;
 legend('location','northwest');
 set(gca,'children',flipud(get(gca,'children')))
-YLref = ylim;
+ylim(YLref);
+
+% --- LARGE VS SMALL RIPPLES
+meanRipDur = mean(rippleStats.data.duration);
+meanRipAmp = mean(rippleStats.data.peakAmplitude);
+meanRipFrq = mean(rippleStats.data.peakFrequency);
+ripDurZ = zscore(rippleStats.data.duration);
+ripAmpZ = zscore(rippleStats.data.peakAmplitude);
+ripFrqZ = zscore(rippleStats.data.peakFrequency);
+large = ripDurZ > 0 & ripAmpZ > 0;
+
+nexttile(19, [2 2]); cla; hold on;
+large = ripDurZ > 0 & ripAmpZ > 0;
+
+events2plot = {'small','large'};
+events = {ripples.timestamps(~large,1),...
+          ripples.timestamps(large,1)};
+data = photom_hpc.grabDA_z;
+timestamps = photom_hpc.timestamps;
+for e = 1:numel(events)  
+    etaHPC = byl_getETA(events{e},data,timestamps,'frequency',130);
+
+    % Plot
+    plot(etaHPC.window, etaHPC.avg, 'color', green(e,:), 'LineWidth', 2,...
+        'DisplayName',events2plot{e});
+    x1 = [etaHPC.window, fliplr(etaHPC.window)];
+    y = [etaHPC.avg + etaHPC.sem, fliplr(etaHPC.avg - etaHPC.sem)];
+    patch(x1,y,green(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
+end
+smallStats = mean(rippleStats.data.duration(~large));
+largeStats = mean(rippleStats.data.duration(large));
+patch([0 smallStats smallStats 0],...
+          [-0.2 -0.2 -0.17 -0.17], ...
+          green(1,:),'EdgeColor','none','HandleVisibility','off');
+patch([0 largeStats largeStats 0],...
+      [-0.17 -0.17 -0.14 -0.14], ...
+      green(2,:),'EdgeColor','none','HandleVisibility','off');
+
+
+xlabel('Time from event (s)');
+ylabel('Fluorescence (z-score)');
+title(sprintf('large vs. small ripples'));
+grid on;
+% ylim([-0.2 1])
+legend('location','best');
+set(gca,'children',flipud(get(gca,'children')))
+ylim(YLref);
+
+% --- QUINTILES BY RIPPLE DURATION
+nexttile(21, [2 2]); cla; hold on;
+
+gscol = gray(7);
+gscol = gscol(1:5,:);
+
+edges = quantile(ripDurZ,linspace(0,1,6));
+for q = 1:numel(edges)-1
+    Q{q} = ripDurZ >= edges(q) & ripDurZ < edges(q+1);
+end
+
+events2plot = {'Q1','Q2','Q3','Q4','Q5'};
+data = photom_hpc.grabDA_z;
+timestamps = photom_hpc.timestamps;
+
+for e = 1:numel(events2plot)
+    events = ripples.timestamps(Q{e},1);
+    etaQ{e} = byl_getETA(events,data,timestamps,'frequency',130, ...
+        'normalization','zscore','durations',durations);
+    plot(etaQ{e}.window, etaQ{e}.avg, 'color', gscol(e,:), 'LineWidth', 2,...
+        'DisplayName',events2plot{e});
+    x1 = [etaQ{e}.window, fliplr(etaQ{e}.window)];
+    y = [etaQ{e}.avg + etaQ{e}.sem, fliplr(etaQ{e}.avg - etaQ{e}.sem)];
+    % patch(x1,y,gscol(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');    
+end
+
+xlabel('Time from event (s)');
+ylabel('Fluorescence (z-score)');
+title(sprintf('quintiles'));
+grid on;
+legend('location','northwest');
+set(gca,'children',flipud(get(gca,'children')))
+ylim(YLref);
+
+% --- QUINTILES BY BURST DURATION
+% nexttile(21, [2 2]); cla; hold on;
+% 
+% gscol = gray(7);
+% gscol = gscol(1:5,:);
+% 
+% allSWR = sort(vertcat(rippleBurst.burstTimes, rippleBurst.soloTimes));
+% allSWRDur = allSWR(:,2)-allSWR(:,1);
+% 
+% edges = quantile(allSWRDur,linspace(0,1,6));
+% for q = 1:numel(edges)-1
+%     Q{q} = allSWRDur >= edges(q) & allSWRDur < edges(q+1);
+% end
+% 
+% events2plot = {'Q1','Q2','Q3','Q4','Q5'};
+% data = photom_hpc.grabDA_z;
+% timestamps = photom_hpc.timestamps;
+% 
+% for e = 1:numel(events2plot)
+%     events = allSWR(Q{e},1);
+%     etaQ{e} = byl_getETA(events,data,timestamps,'frequency',130, ...
+%         'normalization','zscore','durations',durations);
+%     plot(etaQ{e}.window, etaQ{e}.avg, 'color', gscol(e,:), 'LineWidth', 2,...
+%         'DisplayName',events2plot{e});
+%     x1 = [etaQ{e}.window, fliplr(etaQ{e}.window)];
+%     y = [etaQ{e}.avg + etaQ{e}.sem, fliplr(etaQ{e}.avg - etaQ{e}.sem)];
+%     patch(x1,y,gscol(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');    
+% end
+% 
+% xlabel('Time from event (s)');
+% ylabel('Fluorescence (z-score)');
+% title(sprintf('quintiles'));
+% grid on;
+% legend('location','northwest');
+% set(gca,'children',flipud(get(gca,'children')))
+% ylim(YLref);
+
+figure(2);
+
+% >>> Ripple Amplitude
+nexttile(1); cla; hold on;
+solo = rippleStats.data.peakAmplitude(rippleBurst.solos);
+duo = rippleStats.data.peakAmplitude(rippleBurst.duos);
+trio = rippleStats.data.peakAmplitude(rippleBurst.trios);
+
+plot(ones(size(solo)), solo, 'o','Color',[0.8 0.8 0.8],'HandleVisibility','off');
+plot(1, mean(solo),'o','color',blue(1,:),'MarkerFaceColor',blue(1,:),'DisplayName','solos');
+errorbar(1, mean(solo),std(solo),'color',blue(1,:))
+
+plot(2*ones(size(duo)), duo, 'o','Color',[0.8 0.8 0.8],'HandleVisibility','off');
+plot(2, mean(duo),'o','color',blue(2,:),'MarkerFaceColor',blue(2,:),'DisplayName','duos');
+errorbar(2, mean(duo),std(duo),'color',blue(2,:))
+
+plot(3*ones(size(trio)), trio, 'o','Color',[0.8 0.8 0.8],'HandleVisibility','off');
+plot(3, mean(trio),'o','color',blue(3,:),'MarkerFaceColor',blue(3,:),'DisplayName','trios');
+errorbar(3, mean(trio),std(trio),'color',blue(3,:))
+
+xlim([0.5 3.5])
+
+title('Ripple Peak Amplitude')
+xticklabels({'solos','duos','trios'})
+
+% >>> Ripple Duration
+nexttile(2); cla; hold on;
+solo = rippleStats.data.duration(rippleBurst.solos);
+duo = rippleStats.data.duration(rippleBurst.duos);
+trio = rippleStats.data.duration(rippleBurst.trios);
+
+plot(ones(size(solo)), solo, 'o','Color',[0.7 0.7 0.7],'HandleVisibility','off');
+plot(1, mean(solo),'o','color',blue(1,:),'MarkerFaceColor',blue(1,:),'DisplayName','solos');
+errorbar(1, mean(solo),std(solo),'color',blue(1,:))
+
+plot(2*ones(size(duo)), duo, 'o','Color',[0.7 0.7 0.7],'HandleVisibility','off');
+plot(2, mean(duo),'o','color',blue(2,:),'MarkerFaceColor',blue(2,:),'DisplayName','duos');
+errorbar(2, mean(duo),std(duo),'color',blue(2,:))
+
+plot(3*ones(size(trio)), trio, 'o','Color',[0.7 0.7 0.7],'HandleVisibility','off');
+plot(3, mean(trio),'o','color',blue(3,:),'MarkerFaceColor',blue(3,:),'DisplayName','trios');
+errorbar(3, mean(trio),std(trio),'color',blue(3,:))
+
+xlim([0.5 3.5])
+title('Ripple Duration')
+xticklabels({'solos','duos','trios'})
+ylabel('sec')
+
+% >>> Ripple Frequency
+nexttile(9); cla; hold on;
+solo = rippleStats.data.peakFrequency(rippleBurst.solos);
+duo = rippleStats.data.peakFrequency(rippleBurst.duos);
+trio = rippleStats.data.peakFrequency(rippleBurst.trios);
+
+plot(ones(size(solo)), solo, 'o','Color',[0.7 0.7 0.7],'HandleVisibility','off');
+plot(1, mean(solo),'o','color',blue(1,:),'MarkerFaceColor',blue(1,:),'DisplayName','solos');
+errorbar(1, mean(solo),std(solo),'color',blue(1,:))
+
+plot(2*ones(size(duo)), duo, 'o','Color',[0.7 0.7 0.7],'HandleVisibility','off');
+plot(2, mean(duo),'o','color',blue(2,:),'MarkerFaceColor',blue(2,:),'DisplayName','duos');
+errorbar(2, mean(duo),std(duo),'color',blue(2,:))
+
+plot(3*ones(size(trio)), trio, 'o','Color',[0.7 0.7 0.7],'HandleVisibility','off');
+plot(3, mean(trio),'o','color',blue(3,:),'MarkerFaceColor',blue(3,:),'DisplayName','trios');
+errorbar(3, mean(trio),std(trio),'color',blue(3,:))
+
+xlim([0.5 3.5])
+title('Ripple Frequency')
+xticklabels({'solos','duos','trios'})
+ylabel('Hz')
+
+% >>> Burst Duration
+nexttile(10); cla; hold on;
+solo = rippleStats.data.duration(rippleBurst.solos);
+duo = rippleBurst.burstTimes(rippleBurst.burstNum == 2,2) - rippleBurst.burstTimes(rippleBurst.burstNum == 2,1);
+trio = rippleBurst.burstTimes(rippleBurst.burstNum == 3,2) - rippleBurst.burstTimes(rippleBurst.burstNum == 3,1);
+
+plot(ones(size(solo)), solo, 'o','Color',[0.7 0.7 0.7],'HandleVisibility','off');
+plot(1, mean(solo),'o','color',blue(1,:),'MarkerFaceColor',blue(1,:),'DisplayName','solos');
+errorbar(1, mean(solo),std(solo),'color',blue(1,:))
+
+plot(2*ones(size(duo)), duo, 'o','Color',[0.7 0.7 0.7],'HandleVisibility','off');
+plot(2, mean(duo),'o','color',blue(2,:),'MarkerFaceColor',blue(2,:),'DisplayName','duos');
+errorbar(2, mean(duo),std(duo),'color',blue(2,:))
+
+plot(3*ones(size(trio)), trio, 'o','Color',[0.7 0.7 0.7],'HandleVisibility','off');
+plot(3, mean(trio),'o','color',blue(3,:),'MarkerFaceColor',blue(3,:),'DisplayName','trios');
+errorbar(3, mean(trio),std(trio),'color',blue(3,:))
+
+xlim([0.5 3.5])
+title('Burst Duration')
+xticklabels({'solos','duos','trios'})
+ylabel('sec')
+
+meanRipDur = mean(rippleStats.data.duration);
+meanRipAmp = mean(rippleStats.data.peakAmplitude);
+meanRipFrq = mean(rippleStats.data.peakFrequency);
+ripDurZ = zscore(rippleStats.data.duration);
+ripAmpZ = zscore(rippleStats.data.peakAmplitude);
+ripFrqZ = zscore(rippleStats.data.peakFrequency);
+large = ripDurZ > 0 & ripAmpZ > 0;
+
+% --- DA before and after
+nexttile(17); cla; hold on;
+for e = 1:3
+    before = zscore(mean(eta{e}.chunks(:,eta{e}.window < 0),2)); 
+    after = (mean(eta{e}.chunks(:,eta{e}.window >= 0),2) - mean(before)) / std(before); 
+    
+    x1 = 2*(e-1)+1;
+    y1 = x1 + 1;
+    plot([x1,y1], [before after],'Color',[0.7 0.7 0.7],'LineWidth',0.5)
+    plot(x1, mean(before), 'o', 'Color',purple(e,:), 'MarkerFaceColor',purple(e,:),'LineWidth',2);
+    errorbar(x1, mean(before), std(before),'Color',purple(e,:),'LineWidth',2)
+    plot(y1, mean(after), 'o', 'Color',purple(e,:), 'MarkerFaceColor',purple(e,:),'LineWidth',2);
+    errorbar(y1, mean(after), std(after),'Color',purple(e,:),'LineWidth',2)
+end
+xlim([0 7])
+title('change in average DA')
+xticks(1:6)
+xticklabels({'before','after','before','after','before','after'})
+ylabel('z-score (rel. before)')
+
+
+% --- DA 0 to max
+nexttile(18); cla; hold on;
+for e = 1:3
+    change = max(eta{e}.chunks(:,eta{e}.window > 0),[],2) - eta{e}.chunks(:,eta{e}.window == 0);
+    xi = e;
+    x1 = e*ones(size(change));                 % all at x = 1
+    jitterAmount = 0.15;                   % how wide to spread
+    xJittered = x1 + (rand(size(x1)) - 0.5)*2*jitterAmount;
+    scatter(xJittered, change, 5, [0.7 0.7 0.7], 'filled');
+    plot(xi, mean(change), 'o', 'Color',purple(e,:), 'MarkerFaceColor',purple(e,:),'LineWidth',2);
+    errorbar(xi, mean(change), std(change),'Color',purple(e,:),'LineWidth',2)
+   
+end
+xlim([0 4])
+title('change in average DA')
+xticks(1:3)
+xticklabels({'solos','duos','trios'})
+ylabel('change in DA')
+
+
+nexttile(37); cla; hold on;
+scatter(ripDurZ(~large), ripAmpZ(~large),'.k')
+scatter(ripDurZ(large), ripAmpZ(large),'.b')
+xlabel('Duration (z-score)')
+ylabel('Amplitude (z-score')
+xl = xlim;
+yl = ylim;
+plot(xl,[0 0],'-r','LineWidth',0.5);
+plot([0 0],yl,'-r','LineWidth',0.5);
