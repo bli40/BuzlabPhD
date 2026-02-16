@@ -8,10 +8,9 @@
 % 5. sleep score
 % 6. cell Explorer
 
-addpath('Z:\Buzsakilabspace\LabShare\PaleologosN\np_code\Event analysis')
+% addpath('Z:\Buzsakilabspace\LabShare\PaleologosN\np_code\Event analysis')
 addpath('Z:\Buzsakilabspace\LabShare\PaleologosN\np_code\glucose code\State scoring\StateScoring_rodents')
-disp('Get components...');
-
+addpath('\\research-cifs.nyumc.org\research\buzsakilab\Buzsakilabspace\LabShare\PaleologosN\np_code\glucose code\State scoring\StateScoring_rodents')
 %% 1. Patch Behavior
 getPatchTracking('basePath',pwd)
 
@@ -31,15 +30,21 @@ end
 spikes = loadSpikes('getWaveformsFromDat', false);
 
 %% 4. Extract sharp wave ripples
-pyrCh = 75;
-noiseCh = [];
+% Dictionary 
+%   - N11 : 
+%   - N17 :     pyrCh 121   noiseCh 111
+%   - N18 :     pyrCh 56   noiseCh 64
+%   - N19 :     
+pyrCh = 56; 
+noiseCh = 64;
 % pyrCh = ripples.detectorinfo.detectionchannel;  %75 for n11 115 67 for n11
 % noiseCh = ripples.detectorinfo.noisechannel;
 [ripples] = bz_FindRipples(pwd,pyrCh,'noise',noiseCh, ...
                                      'savemat',true, ...
                                      'durations',[30 200], ...
                                      'passband',[130 250], ...
-                                     'thresholds',[2 4]);
+                                     'thresholds',[2 5], ...
+                                     'restrict',SleepState.ints.NREMstate);
 %% 5. Ripple Stats
 pyrCh = bz_GetLFP(ripples.detectorinfo.detectionchannel);
 ripLFP = bz_Filter(pyrCh.data,'passband',ripples.detectorinfo.detectionparms.passband);
@@ -53,10 +58,11 @@ save(join([name,'.ripples.stats.mat']),"rippleStats");
 %% 6. Sleep score
 % badChannels = [24:38 48:63]; %N7
 % badChannels = [0:3 15:18 21:30 43 50 95 97]; %N9
-badChannels = [20:38]; %N11
+% badChannels = [20:38]; %N11
 % badChannels = [74]; %N14
 % badChannels = [0:3 15:18 21:30 41 43 46 47 50 52 95 97]; %N15
 % badChannels = [42 48 56:59 61 70 72]; %N17
+badChannels = [1,2,4:14,74,112:118,120:126,82,83,91,92]; %N18
 
 SleepScoreMaster(pwd,'stickytrigger',true,'rejectChannels',badChannels); % try to sleep score
 % SleepScoreMaster_km(pwd,'stickytrigger',true,'rejectChannels',badChannels); % try to sleep score

@@ -72,7 +72,7 @@ fileTable = table(hasConc, hasSync, hasMat, whichRegions, numEpochs, ...
     'VariableNames',{'hasConc','hasSync','hasMat','whichRegions','numEpochs'});
 
 %% Pick Session
-sesh = 1;
+sesh = 24;
 cd(sessionPaths{sesh});
 [~,name,~] = fileparts(sessionPaths{sesh});
 
@@ -87,11 +87,11 @@ clearvars -except fileTable sessionPaths directory sesh name
 % d = (dir(fullfile('N*.behavior.matrices.mat')));
 % load(fullfile(d(1).folder, d(1).name))
 
-d = (dir(fullfile('N*.TrialBehavior.mat')));
-load(fullfile(d(1).folder, d(1).name))
+% d = (dir(fullfile('N*.TrialBehavior.mat')));
+% load(fullfile(d(1).folder, d(1).name))
 
-d = (dir(fullfile('N*.Tracking.Behavior.mat')));
-load(fullfile(d(1).folder, d(1).name))
+% d = (dir(fullfile('N*.Tracking.Behavior.mat')));
+% load(fullfile(d(1).folder, d(1).name))
 
 d = (dir(fullfile('N*.ripples.events.mat')));
 load(fullfile(d(1).folder, d(1).name))
@@ -102,21 +102,16 @@ load(fullfile(d(1).folder, d(1).name));
 d = (dir(fullfile('N*.SleepState.states.mat')));
 load(fullfile(d(1).folder, d(1).name))
 
-if any(contains(fileTable(sesh,:).whichRegions{:},'HPC'))
-    d = (dir(fullfile('N*.photometry.HPC.mat')));
-    load(fullfile(d(1).folder, d(1).name))
-    photom_hpc = concPhotom;
+d = dir(fullfile('N*.photometry.*.mat'));
+for re = 1:numel(d)
+   photom{re} = load(fullfile(d(re).folder, d(re).name)); 
 end
+photom_hpc = photom{contains({d(:).name},'HPC')}.concPhotom;
+photom_str = photom{contains({d(:).name},'STR')}.concPhotom;
+photom_pfc = photom{contains({d(:).name},'PFC')}.concPhotom;
 
-if any(contains(fileTable(sesh,:).whichRegions{:},'STR'))
-d = (dir(fullfile('N*.photometry.STR.mat')));
-load(fullfile(d(1).folder, d(1).name))
-photom_str = concPhotom;
-end
-
-
-d = (dir(fullfile('N*.MergePoints.events.mat')));
-load(fullfile(d(1).folder, d(1).name))
+% d = (dir(fullfile('N*.MergePoints.events.mat')));
+% load(fullfile(d(1).folder, d(1).name))
 
 fprintf('%s - data loaded\n',name)
 %% Events and Photometry
@@ -248,196 +243,252 @@ else
     fprintf('%s - no stimulation\n',name)
 end
 
-%% Event Triggered Averages
-% build a -5 to +5 time window around each ripple event, evenly sampled at
-% 130 Hz (photometry sampling rate), and interpolate at the windowed
-% samples from the PHOTOM DATA to build the event-triggered average DA
-% trace.
-
-%{
-% Choose Events
-N = split(num2str(1:numel(burstPlace)));
-% events2plot = {'bursts', 'solos'}; 
-events2plot = {'solos','duos','trios'};
-% events2plot = {'solos','1','2','3'};
-% events2plot = {'solos','1','last'};
-% events2plot = {'long stim','short stim'};
-% events2plot = {'stims','nosepokes'};
-% events2plot = {'rewarded pokes', 'unrewarded pokes'};
-% events2plot = {'gibberish'};
-traces2pull = {'z-score'};      % z-score, dF/F
-
-% stack plots or not
-stack = true;
-
-% create color scheme
-str_col = customcolormap([0 0.75 1],[1 0.9 0.9; 0.5 0 0; 0.1 0 0],101);
-str_col = str_col([20 50 80],:);
-hpc_col = customcolormap([0 0.75 1],[0.9 0.9 1; 0 0 0.5; 0 0 0.1],101);
-hpc_col = hpc_col([20 50 80],:);
-
-% str_col = autumn(4);
-% hpc_col = winter(4);
-
-for e = 1:numel(events2plot)
-    % for a = 1:numel(traces2pull)
-    event = events2plot{e};
-    trace = traces2pull{1};
-    % rename event times variables
-    switch lower(event)
-        case "ripples"
-            eventTimes_hpc = ripples.timestamps(:,1);
-            eventTimes_str = ripples.timestamps(:,1);
-        case "stims"
-            eventTimes_hpc = photom_hpc.stimpulseOnOff(:,1));
-            eventTimes_str = photom_str.stimpulseOnOff(:,1));
-        case "long stim"
-            eventTimes_hpc = photom_hpc.stimpulseOnOff(stimDur > 1,1));
-            eventTimes_str = photom_str.stimpulseOnOff(stimDur > 1,1));
-        case "short stim"
-            eventTimes_hpc = photom_hpc.stimpulseOnOff(stimDur < 1,1));
-            eventTimes_str = photom_str.stimpulseOnOff(stimDur < 1,1));
-        case "nosepokes"
-            eventTimes_hpc = behavTrials.timestamps;
-            eventTimes_str = behavTrials.timestamps;
-        case "rewarded pokes"
-            eventTimes_hpc = behavTrials.timestamps(logical(behavTrials.reward_outcome));
-            eventTimes_str = behavTrials.timestamps(logical(behavTrials.reward_outcome));
-        case "unrewarded pokes"
-            eventTimes_hpc = behavTrials.timestamps(~logical(behavTrials.reward_outcome));
-            eventTimes_str = behavTrials.timestamps(~logical(behavTrials.reward_outcome));
-        case "first in duos"
-            idx = rippleBurst.first & rippleBurst.duos;
-            eventTimes_hpc = ripples.timestamps(idx,1);
-            eventTimes_str = ripples.timestamps(idx,1);
-        case "second in duos"
-            idx = rippleBurst.second & rippleBurst.duos;
-            eventTimes_hpc = ripples.timestamps(idx,1);
-            eventTimes_str = ripples.timestamps(idx,1);
-        case "first in trios"
-            idx = rippleBurst.first & rippleBurst.trios;
-            eventTimes_hpc = ripples.timestamps(idx,1);
-            eventTimes_str = ripples.timestamps(idx,1);
-        case "second in trios"
-            idx = rippleBurst.second & rippleBurst.trios;
-            eventTimes_hpc = ripples.timestamps(idx,1);
-            eventTimes_str = ripples.timestamps(idx,1);
-        case "third in trios"
-            idx = rippleBurst.third & rippleBurst.trios;
-            eventTimes_hpc = ripples.timestamps(idx,1);
-            eventTimes_str = ripples.timestamps(idx,1);
-        otherwise
-            if isfield(rippleBurst, event)
-                eventTimes_hpc = ripples.timestamps(rippleBurst.(event),1);
-                eventTimes_str = ripples.timestamps(rippleBurst.(event),1);
-            else
-                fprintf('%s is not a registered event type. Halting.\n',event);
-                break;
-            end
-    end
-    
-    disp('Extracting event windows...')
-
-    etaHPC = byl_getETA(eventTimes_hpc, ...
-        photom_hpc.grabDA_z, ...
-        photom_hpc.timestamps, ...
-        'frequency',130);
-    etaSTR = byl_getETA(eventTimes_str, ...
-        photom_str.grabDA_z, ...
-        photom_str.timestamps, ...
-        'frequency',130);
-    % Plot
-    [~,name,~] = fileparts(sessionPaths{sesh});
-
-
-    if stack == true && e == 1
-        f = figure(e); clf; hold on;
-        disp('Waiting for next plots...')
-    elseif stack == true && e ~= 1
-        f = gcf; hold on;
-        disp('Waiting for next plots...')
-    else 
-        f = figure(e); clf;
-        tiledlayout(1,2,"TileSpacing",'tight')
-    end
-    f.Position = [100 200 1300 500];
-    sgtitle(sprintf('%s',name),'Interpreter','none');
-
-    nexttile(1); hold on;
-    plot(etaHPC.window, etaHPC.avg, 'color', hpc_col(e,:), 'LineWidth', 2,...
-        'DisplayName',events2plot{e});
-    x = [etaHPC.window, fliplr(etaHPC.window)];
-    y = [etaHPC.avg + etaHPC.sem, fliplr(etaHPC.avg - etaHPC.sem)];
-    patch(x,y,hpc_col(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
-    YL1 = ylim;
-    plot([0 0], YL1,'-k','LineWidth',0.5,'HandleVisibility','off');
-    xlabel('Time from event (s)');
-    ylabel(ylab);
-    title(sprintf('Event-Triggered Average\nHPC DA'));
-    grid on;
-    legend();
-    
-    nexttile(2); hold on;
-    plot(etaSTR.window, etaSTR.avg, 'color', str_col(e,:), 'LineWidth', 2,...
-        'DisplayName',events2plot{e});
-    x = [etaSTR.window, fliplr(etaSTR.window)];
-    y = [etaSTR.avg + etaSTR.sem, fliplr(etaSTR.avg - etaSTR.sem)];
-    patch(x,y,str_col(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
-    YL2 = ylim;
-    plot([0 0], YL2,'-k','LineWidth',0.5,'HandleVisibility','off');
-    xlabel('Time from event (s)');
-    ylabel(ylab);
-    title(sprintf('Event-Triggered Average\nSTR DA'));
-    grid on;
-    legend();
-    % YL = [min([YL1,YL2]), max([YL1,YL2])];
-    % ax = findall(f,'type','axes');
-    % ylim(ax, YL)
-    
-end
-disp('done!')
-%}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 %% Custom Color Map
 
 
 ogCol = lines(7);
-expandCol = cell(1,numel(ogCol));
+gradCol = cell(1,numel(ogCol));
 for c = 1:size(ogCol,1)
-    expandCol{c} = customcolormap([0 0.5 1], [1 1 1; ogCol(c,:); 0 0 0],101);
-    expandCol{c} = expandCol{c}([20 50 80],:);
+    gradCol{c} = customcolormap([0 0.5 1], [1 1 1; ogCol(c,:); 0 0 0],101);
+    gradCol{c} = gradCol{c}([20 50 80],:);
 end
-blue = expandCol{1};
-orange = expandCol{2};
-yellow = expandCol{3};
-purple = expandCol{4};
-green = expandCol{5};
-blue2 = expandCol{6};
-red = expandCol{7};
+blue = gradCol{1};
+orange = gradCol{2};
+yellow = gradCol{3};
+purple = gradCol{4};
+green = gradCol{5};
+blue2 = gradCol{6};
+red = gradCol{7};
+
+%% Quick Plot (upcoming: make pretty)
+[~,name,~] = fileparts(sessionPaths{sesh});
+% figure initiate
+f1 = figure(1); clf; hold on;
+f1.Units = 'normalized';
+f1.Position = [0 0.05 1 0.865];
+tiledlayout(3,6,'TileSpacing','tight','Padding','tight');
+sgtitle(sprintf('%s',name),'Interpreter','none');
+
+sessionEndTime = max([photom_hpc.timestamps(end), ...
+                      photom_str.timestamps(end), ...
+                      photom_pfc.timestamps(end)]);
+sessionStartTime = min([photom_hpc.timestamps(1), ...
+                      photom_str.timestamps(1), ...
+                      photom_pfc.timestamps(1)]);
+YL = [-10 10];
+XL = [sessionStartTime - 100, sessionEndTime + 750];
+
+d = dir(fullfile('N*.photometry.*.mat'));
+possibleRegions = {'HPC','STR','PFC'};
+
+%--- FLUORESCENCE BY REGION
+for r = 1:numel(possibleRegions)
+    figLoc = (r-1)*6 + 1;
+    nexttile(figLoc, [1 3]); hold on;
+    region = contains(fileTable(sesh,:).whichRegions{:}, possibleRegions{r});
+    if ~any(region)
+        set(gca, 'Color', 'none'); % Axes background   
+        axis off
+        text(0.5,0.5, sprintf('NO %s PHOTOM DATA',possibleRegions{r}), ...
+            'FontSize',12, ...
+            'Color','r', ...
+            'FontWeight','bold', ...
+            'HorizontalAlignment','center');
+    else
+        photomIdx = photom{region}.concPhotom;
+        
+        plot(photomIdx.timestamps, photomIdx.grabDA_z, ...
+            'color',[0.5 0.5 0.5],'LineWidth',0.5)
+    
+        for ep = 1:numel(photomIdx.epochNames)
+            plot([photomIdx.epochs(ep,1) photomIdx.epochs(ep,1)],[-10 10], ...
+                '--r')
+            text(photomIdx.epochs(ep,1),YL(2)-1,photomIdx.epochNames{ep},'Color','r')
+        end
+        plot(solos(:,1),(-4.5)*ones(size(solos(:,1))),'|k','MarkerSize',7);
+        plot(bursts(:,1),-6*ones(size(bursts(:,1))),'|b','MarkerSize',7);
+        % plot(behavTrials.timestamps,(-7.5)*ones(size(behavTrials.timestamps)),'|r','MarkerSize',7)
+        if ~isempty(stimOnOff)
+            plot(photomIdx.stimpulseOnOff(:,1),(-9)*ones(size(photomIdx.stimpulseOnOff(:,1))), ...
+                '|','Color',[0.3 0.3 0.3], 'MarkerSize',7)
+        end
+        text(sessionEndTime+50,-4.5,sprintf('solos (%i)',size(solos,1)),'FontSize',10,'Color','k')
+        text(sessionEndTime+50,-6,sprintf('bursts (%i)',size(bursts,1)),'FontSize',10,'Color','b')
+        text(sessionEndTime+50,-7.5,'nose pokes','FontSize',10,'Color','r')
+        text(sessionEndTime+50,-9,'stims','FontSize',10,'Color','[0.3 0.3 0.3]')
+        
+        xlim(XL); ylim(YL);
+        xticklabels('')
+        ylabel(sprintf('%s (z-score)',possibleRegions{r}))
+        title(sprintf('%s Photometry Session',possibleRegions{r}));
+    end
+
+end
 
 
-figure(69); colorbar; colormap(ogCol);
+% --- RIPPLE TRIGGERED AVERAGES
+events2plot = {'solos','duos','trios'};
+events = {rippleBurst.soloTimes(:,1),...
+          rippleBurst.burstTimes(rippleBurst.burstNum == 2,1),...
+          rippleBurst.burstTimes(rippleBurst.burstNum == 3,1)};
+durations = [-5 5];
+eta = cell(numel(events), numel(data));
+
+for r = 1:numel(possibleRegions)
+    figLoc = (r-1)*6 + 4;
+    nexttile(figLoc); hold on;
+    region = contains(fileTable(sesh,:).whichRegions{:}, possibleRegions{r});
+    if ~any(region)
+        set(gca, 'Color', 'none'); % Axes background   
+        axis off
+        text(0.5,0.5, sprintf('NO %s PHOTOM DATA',possibleRegions{r}), ...
+            'FontSize',12, ...
+            'Color','r', ...
+            'FontWeight','bold', ...
+            'HorizontalAlignment','center');
+    else
+        figLoc = ((r-1)*6)+4;
+        nexttile(figLoc); cla; hold on;
+
+        photomIdx = photom{region}.concPhotom;
+        data = photomIdx.grabDA_z;
+        timestamps = photomIdx.timestamps;
+
+        for e = 1:numel(events)
+            eta{r,e} = byl_getETA(events{e},data,timestamps, ...
+                'frequency',130,'normalization','zscore','durations',durations);
+            plot(eta{r,e}.window, eta{r,e}.avg, 'color', blue(e,:), 'LineWidth', 2,...
+                'DisplayName',events2plot{e});
+            x1 = [eta{r,e}.window, fliplr(eta{r,e}.window)];
+            y = [eta{r,e}.avg + eta{r,e}.sem, fliplr(eta{r,e}.avg - eta{r,e}.sem)];
+            patch(x1,y,blue(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');   
+        end
+        xlabel('Time from event (s)');
+        ylabel('Fluorescence (z-score)');
+        title(sprintf('Ripples'));
+        grid on;
+        legend('location','northwest');
+        set(gca,'children',flipud(get(gca,'children')))
+        YLref = ylim;
+    end
+end
+
+% --- NOSEPOKE TRIGGERED AVERAGES
+events2plot = {'rewarded','unrewarded'};
+events = {};
+durations = [-5 5];
+eta = cell(numel(events), numel(data));
+
+for r = 1:numel(possibleRegions)
+    figLoc = (r-1)*6 + 5;
+    nexttile(figLoc); hold on;
+    region = contains(fileTable(sesh,:).whichRegions{:}, possibleRegions{r});
+
+    if isempty(events)
+        set(gca, 'Color', 'none'); % Axes background   
+        axis off
+        text(0.5,0.5,'NO BEHAVIOR', ...
+            'FontSize',12, ...
+            'Color','r', ...
+            'FontWeight','bold', ...
+            'HorizontalAlignment','center');
+    elseif ~any(region)
+        set(gca, 'Color', 'none'); % Axes background   
+        axis off
+        text(0.5,0.5, sprintf('NO %s PHOTOM DATA',possibleRegions{r}), ...
+            'FontSize',12, ...
+            'Color','r', ...
+            'FontWeight','bold', ...
+            'HorizontalAlignment','center');
+    else
+        figLoc = ((r-1)*6)+5;
+        nexttile(figLoc); cla; hold on;
+
+        photomIdx = photom{region}.concPhotom;
+        data = photomIdx.grabDA_z;
+        timestamps = photomIdx.timestamps;
+
+        for e = 1:numel(events)
+            eta{r,e} = byl_getETA(events{e},data,timestamps, ...
+                'frequency',130,'normalization','zscore','durations',durations);
+            plot(eta{r,e}.window, eta{r,e}.avg, 'color', blue(e,:), 'LineWidth', 2,...
+                'DisplayName',events2plot{e});
+            x1 = [eta{r,e}.window, fliplr(eta{r,e}.window)];
+            y = [eta{r,e}.avg + eta{r,e}.sem, fliplr(eta{r,e}.avg - eta{r,e}.sem)];
+            patch(x1,y,blue(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');   
+        end
+        xlabel('Time from event (s)');
+        ylabel('Fluorescence (z-score)');
+        title('Ripples');
+        grid on;
+        legend('location','northwest');
+        set(gca,'children',flipud(get(gca,'children')))
+        YLref = ylim;
+    end
+end
+
+% --- STIM TRIGGERED AVERAGES
+events2plot = {'long','short'};
+events = {};
+durations = [-5 5];
+eta = cell(numel(events), numel(data));
+
+for r = 1:numel(possibleRegions)
+    figLoc = (r-1)*6 + 6;
+    nexttile(figLoc); hold on;
+    region = contains(fileTable(sesh,:).whichRegions{:}, possibleRegions{r});
+
+    if isempty(events)
+        set(gca, 'Color', 'none'); % Axes background   
+        axis off
+        text(0.5,0.5,'NO OPTOGENETICS', ...
+            'FontSize',12, ...
+            'Color','r', ...
+            'FontWeight','bold', ...
+            'HorizontalAlignment','center');
+    elseif ~any(region)
+        set(gca, 'Color', 'none'); % Axes background   
+        axis off
+        text(0.5,0.5, sprintf('NO %s PHOTOM DATA',possibleRegions{r}), ...
+            'FontSize',12, ...
+            'Color','r', ...
+            'FontWeight','bold', ...
+            'HorizontalAlignment','center');
+    else
+        figLoc = ((r-1)*6)+4;
+        nexttile(figLoc); cla; hold on;
+
+        photomIdx = photom{region}.concPhotom;
+        data = photomIdx.grabDA_z;
+        timestamps = photomIdx.timestamps;
+
+        for e = 1:numel(events)
+            eta{r,e} = byl_getETA(events{e},data,timestamps, ...
+                'frequency',130,'normalization','zscore','durations',durations);
+            plot(eta{r,e}.window, eta{r,e}.avg, 'color', blue(e,:), 'LineWidth', 2,...
+                'DisplayName',events2plot{e});
+            x1 = [eta{r,e}.window, fliplr(eta{r,e}.window)];
+            y = [eta{r,e}.avg + eta{r,e}.sem, fliplr(eta{r,e}.avg - eta{r,e}.sem)];
+            patch(x1,y,blue(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');   
+        end
+        xlabel('Time from event (s)');
+        ylabel('Fluorescence (z-score)');
+        title(sprintf('Ripple-Triggered Average\nHPC DA (whole session)'));
+        grid on;
+        legend('location','northwest');
+        set(gca,'children',flipud(get(gca,'children')))
+        YLref = ylim;
+    end
+end
+
 %% Master Plot
 [~,name,~] = fileparts(sessionPaths{sesh});
 % figure initiate
 f1 = figure(10); clf; hold on;
 f1.Units = 'normalized';
 f1.Position = [0 0.05 1 0.865];
-tiledlayout(6,12,'TileSpacing','tight','Padding','tight');
+tiledlayout(3,6,'TileSpacing','tight','Padding','tight');
 sgtitle(sprintf('%s',name),'Interpreter','none');
 
 
