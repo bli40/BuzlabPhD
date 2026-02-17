@@ -107,8 +107,8 @@ tSampMatrix = tSampMatrix(keepEvent,:);
 
 
 % --- Compute Statistics ---
-eta_avg = mean(etaMatrix, 1);
-eta_std = std(etaMatrix, 0, 1);
+eta_avg = mean(etaMatrix, 1,'omitnan');
+eta_std = std(etaMatrix, 0, 1,'omitnan');
 eta_sem = eta_std / sqrt(size(etaMatrix,1));
 eta = struct('avg',eta_avg, ...
              'std',eta_std, ...
@@ -119,8 +119,8 @@ eta = struct('avg',eta_avg, ...
 % --- Optional normalization ---
 if ~strcmp(norm, 'none')
     normedMat = normalize(etaMatrix,2,norm);
-    normedAvg = mean(normedMat,1);
-    normedSem = std(normedMat,0,1) / sqrt(size(normedMat,1));
+    normedAvg = mean(normedMat,1,'omitnan');
+    normedSem = std(normedMat,0,1,'omitnan') / sqrt(size(normedMat,1));
     eta.normChunks = normedMat;
     eta.normAvg = normedAvg;
     eta.normSem = normedSem;

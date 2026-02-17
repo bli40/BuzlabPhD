@@ -72,26 +72,24 @@ fileTable = table(hasConc, hasSync, hasMat, whichRegions, numEpochs, ...
     'VariableNames',{'hasConc','hasSync','hasMat','whichRegions','numEpochs'});
 
 %% Pick Session
-sesh = 24;
+sesh = 3;
 cd(sessionPaths{sesh});
 [~,name,~] = fileparts(sessionPaths{sesh});
-
-%% Initialize
 clearvars -except fileTable sessionPaths directory sesh name
 
+%% Initialize
 
+d = (dir(fullfile(sessionPaths{sesh},'N*.session.mat')));
+load(fullfile(d(1).folder, d(1).name))
 
-% d = (dir(fullfile(sessionPaths{sesh},'N*.session.mat')));
-% load(fullfile(d(1).folder, d(1).name))
+d = (dir(fullfile('N*.behavior.matrices.mat')));
+load(fullfile(d(1).folder, d(1).name))
 
-% d = (dir(fullfile('N*.behavior.matrices.mat')));
-% load(fullfile(d(1).folder, d(1).name))
+d = (dir(fullfile('N*.TrialBehavior.mat')));
+load(fullfile(d(1).folder, d(1).name))
 
-% d = (dir(fullfile('N*.TrialBehavior.mat')));
-% load(fullfile(d(1).folder, d(1).name))
-
-% d = (dir(fullfile('N*.Tracking.Behavior.mat')));
-% load(fullfile(d(1).folder, d(1).name))
+d = (dir(fullfile('N*.Tracking.Behavior.mat')));
+load(fullfile(d(1).folder, d(1).name))
 
 d = (dir(fullfile('N*.ripples.events.mat')));
 load(fullfile(d(1).folder, d(1).name))
@@ -106,12 +104,27 @@ d = dir(fullfile('N*.photometry.*.mat'));
 for re = 1:numel(d)
    photom{re} = load(fullfile(d(re).folder, d(re).name)); 
 end
-photom_hpc = photom{contains({d(:).name},'HPC')}.concPhotom;
-photom_str = photom{contains({d(:).name},'STR')}.concPhotom;
-photom_pfc = photom{contains({d(:).name},'PFC')}.concPhotom;
 
-% d = (dir(fullfile('N*.MergePoints.events.mat')));
-% load(fullfile(d(1).folder, d(1).name))
+try
+    photom_hpc = photom{contains({d(:).name},'HPC')}.concPhotom;
+catch
+    disp('No HPC Data');
+end
+
+try
+    photom_str = photom{contains({d(:).name},'STR')}.concPhotom;
+catch
+    disp('No STR Data');
+end
+
+try
+    photom_pfc = photom{contains({d(:).name},'PFC')}.concPhotom;
+catch
+    disp('No PFC Data');
+end
+
+d = (dir(fullfile('N*.MergePoints.events.mat')));
+load(fullfile(d(1).folder, d(1).name))
 
 fprintf('%s - data loaded\n',name)
 %% Events and Photometry
@@ -270,22 +283,32 @@ f1.Position = [0 0.05 1 0.865];
 tiledlayout(3,6,'TileSpacing','tight','Padding','tight');
 sgtitle(sprintf('%s',name),'Interpreter','none');
 
-sessionEndTime = max([photom_hpc.timestamps(end), ...
-                      photom_str.timestamps(end), ...
-                      photom_pfc.timestamps(end)]);
-sessionStartTime = min([photom_hpc.timestamps(1), ...
-                      photom_str.timestamps(1), ...
-                      photom_pfc.timestamps(1)]);
+sessionEndTime = max(cellfun(@(x) x.concPhotom.timestamps(end), photom));
+sessionStartTime = min(cellfun(@(x) x.concPhotom.timestamps(1), photom));
+
 YL = [-10 10];
-XL = [sessionStartTime - 100, sessionEndTime + 750];
+XL = [sessionStartTime - 100, sessionEndTime + 1500];
 
 d = dir(fullfile('N*.photometry.*.mat'));
 possibleRegions = {'HPC','STR','PFC'};
 
-%--- FLUORESCENCE BY REGION
+% --- SESSION METRICS
+nexttile(1,[3,1]); cla; hold on;
+title('SESSION METRICS','Color','blue','FontSize',12);
+set(gca, 'Color', 'none'); % Axes background   
+% axis off
+secondsTotal = sessionEndTime - sessionStartTime;
+h = floor(secondsTotal / 3600);
+m = floor(mod(secondsTotal, 3600) / 60);
+s = mod(secondsTotal, 60);
+text(0.05, 1, sprintf('Duration: %ih %im %0.2fs',h,m,s),...
+    'VerticalAlignment','top','FontSize',12);
+text(0.1, 0.97, sprintf('-Epoch 1:\n-Epoch 2:\n'),'VerticalAlignment','top');
+
+% --- FLUORESCENCE BY REGION
 for r = 1:numel(possibleRegions)
-    figLoc = (r-1)*6 + 1;
-    nexttile(figLoc, [1 3]); hold on;
+    figLoc = (r-1)*6 + 2;
+    nexttile(figLoc, [1 2]); hold on;
     region = contains(fileTable(sesh,:).whichRegions{:}, possibleRegions{r});
     if ~any(region)
         set(gca, 'Color', 'none'); % Axes background   
@@ -308,14 +331,14 @@ for r = 1:numel(possibleRegions)
         end
         plot(solos(:,1),(-4.5)*ones(size(solos(:,1))),'|k','MarkerSize',7);
         plot(bursts(:,1),-6*ones(size(bursts(:,1))),'|b','MarkerSize',7);
-        % plot(behavTrials.timestamps,(-7.5)*ones(size(behavTrials.timestamps)),'|r','MarkerSize',7)
+        plot(behavTrials.timestamps,(-7.5)*ones(size(behavTrials.timestamps)),'|r','MarkerSize',7)
         if ~isempty(stimOnOff)
             plot(photomIdx.stimpulseOnOff(:,1),(-9)*ones(size(photomIdx.stimpulseOnOff(:,1))), ...
                 '|','Color',[0.3 0.3 0.3], 'MarkerSize',7)
         end
-        text(sessionEndTime+50,-4.5,sprintf('solos (%i)',size(solos,1)),'FontSize',10,'Color','k')
-        text(sessionEndTime+50,-6,sprintf('bursts (%i)',size(bursts,1)),'FontSize',10,'Color','b')
-        text(sessionEndTime+50,-7.5,'nose pokes','FontSize',10,'Color','r')
+        text(sessionEndTime+50,-4.5,'solos','FontSize',10,'Color','k')
+        text(sessionEndTime+50,-6,'bursts','FontSize',10,'Color','b')
+        text(sessionEndTime+50,-7.5,'pokes','FontSize',10,'Color','r')
         text(sessionEndTime+50,-9,'stims','FontSize',10,'Color','[0.3 0.3 0.3]')
         
         xlim(XL); ylim(YL);
@@ -333,7 +356,6 @@ events = {rippleBurst.soloTimes(:,1),...
           rippleBurst.burstTimes(rippleBurst.burstNum == 2,1),...
           rippleBurst.burstTimes(rippleBurst.burstNum == 3,1)};
 durations = [-5 5];
-eta = cell(numel(events), numel(data));
 
 for r = 1:numel(possibleRegions)
     figLoc = (r-1)*6 + 4;
@@ -348,9 +370,7 @@ for r = 1:numel(possibleRegions)
             'FontWeight','bold', ...
             'HorizontalAlignment','center');
     else
-        figLoc = ((r-1)*6)+4;
-        nexttile(figLoc); cla; hold on;
-
+       
         photomIdx = photom{region}.concPhotom;
         data = photomIdx.grabDA_z;
         timestamps = photomIdx.timestamps;
@@ -359,7 +379,7 @@ for r = 1:numel(possibleRegions)
             eta{r,e} = byl_getETA(events{e},data,timestamps, ...
                 'frequency',130,'normalization','zscore','durations',durations);
             plot(eta{r,e}.window, eta{r,e}.avg, 'color', blue(e,:), 'LineWidth', 2,...
-                'DisplayName',events2plot{e});
+                'DisplayName',sprintf('%s (%i)',events2plot{e},numel(events{e})));
             x1 = [eta{r,e}.window, fliplr(eta{r,e}.window)];
             y = [eta{r,e}.avg + eta{r,e}.sem, fliplr(eta{r,e}.avg - eta{r,e}.sem)];
             patch(x1,y,blue(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');   
@@ -368,21 +388,21 @@ for r = 1:numel(possibleRegions)
         ylabel('Fluorescence (z-score)');
         title(sprintf('Ripples'));
         grid on;
-        legend('location','northwest');
+        legend('location','best','FontSize',6);
         set(gca,'children',flipud(get(gca,'children')))
         YLref = ylim;
     end
 end
 
 % --- NOSEPOKE TRIGGERED AVERAGES
-events2plot = {'rewarded','unrewarded'};
-events = {};
+events2plot = {'re','unre'};
+events = {behavTrials.timestamps(logical(behavTrials.reward_outcome)),...
+          behavTrials.timestamps(~logical(behavTrials.reward_outcome))};
 durations = [-5 5];
-eta = cell(numel(events), numel(data));
 
 for r = 1:numel(possibleRegions)
     figLoc = (r-1)*6 + 5;
-    nexttile(figLoc); hold on;
+    nexttile(figLoc); cla; hold on;
     region = contains(fileTable(sesh,:).whichRegions{:}, possibleRegions{r});
 
     if isempty(events)
@@ -402,9 +422,7 @@ for r = 1:numel(possibleRegions)
             'FontWeight','bold', ...
             'HorizontalAlignment','center');
     else
-        figLoc = ((r-1)*6)+5;
-        nexttile(figLoc); cla; hold on;
-
+        
         photomIdx = photom{region}.concPhotom;
         data = photomIdx.grabDA_z;
         timestamps = photomIdx.timestamps;
@@ -412,17 +430,17 @@ for r = 1:numel(possibleRegions)
         for e = 1:numel(events)
             eta{r,e} = byl_getETA(events{e},data,timestamps, ...
                 'frequency',130,'normalization','zscore','durations',durations);
-            plot(eta{r,e}.window, eta{r,e}.avg, 'color', blue(e,:), 'LineWidth', 2,...
-                'DisplayName',events2plot{e});
+            plot(eta{r,e}.window, eta{r,e}.avg, 'color', yellow(e,:), 'LineWidth', 2,...
+                'DisplayName',sprintf('%s (%i)',events2plot{e},numel(events{e})));
             x1 = [eta{r,e}.window, fliplr(eta{r,e}.window)];
             y = [eta{r,e}.avg + eta{r,e}.sem, fliplr(eta{r,e}.avg - eta{r,e}.sem)];
-            patch(x1,y,blue(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');   
+            patch(x1,y,yellow(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');   
         end
         xlabel('Time from event (s)');
         ylabel('Fluorescence (z-score)');
-        title('Ripples');
+        title('Nosepokes');
         grid on;
-        legend('location','northwest');
+        legend('location','best','FontSize',6);
         set(gca,'children',flipud(get(gca,'children')))
         YLref = ylim;
     end
@@ -430,13 +448,13 @@ end
 
 % --- STIM TRIGGERED AVERAGES
 events2plot = {'long','short'};
-events = {};
+events = {photom_hpc.stimpulseOnOff(stimDur > 1,1),...
+          photom_hpc.stimpulseOnOff(stimDur < 1,1)};
 durations = [-5 5];
-eta = cell(numel(events), numel(data));
 
 for r = 1:numel(possibleRegions)
-    figLoc = (r-1)*6 + 6;
-    nexttile(figLoc); hold on;
+    figLoc = ((r-1)*6) + 6;
+    nexttile(figLoc); cla; hold on;
     region = contains(fileTable(sesh,:).whichRegions{:}, possibleRegions{r});
 
     if isempty(events)
@@ -456,8 +474,6 @@ for r = 1:numel(possibleRegions)
             'FontWeight','bold', ...
             'HorizontalAlignment','center');
     else
-        figLoc = ((r-1)*6)+4;
-        nexttile(figLoc); cla; hold on;
 
         photomIdx = photom{region}.concPhotom;
         data = photomIdx.grabDA_z;
@@ -466,19 +482,19 @@ for r = 1:numel(possibleRegions)
         for e = 1:numel(events)
             eta{r,e} = byl_getETA(events{e},data,timestamps, ...
                 'frequency',130,'normalization','zscore','durations',durations);
-            plot(eta{r,e}.window, eta{r,e}.avg, 'color', blue(e,:), 'LineWidth', 2,...
-                'DisplayName',events2plot{e});
+            plot(eta{r,e}.window, eta{r,e}.avg, 'color', red(e,:), 'LineWidth', 2,...
+                'DisplayName',sprintf('%s (%i)',events2plot{e},numel(events{e})));
             x1 = [eta{r,e}.window, fliplr(eta{r,e}.window)];
             y = [eta{r,e}.avg + eta{r,e}.sem, fliplr(eta{r,e}.avg - eta{r,e}.sem)];
-            patch(x1,y,blue(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');   
+            patch(x1,y,red(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');   
         end
         xlabel('Time from event (s)');
         ylabel('Fluorescence (z-score)');
-        title(sprintf('Ripple-Triggered Average\nHPC DA (whole session)'));
+        title(sprintf('Stimulations'));
         grid on;
-        legend('location','northwest');
+        legend('location','best','FontSize',6);
         set(gca,'children',flipud(get(gca,'children')))
-        YLref = ylim;
+        % YLref = ylim;
     end
 end
 

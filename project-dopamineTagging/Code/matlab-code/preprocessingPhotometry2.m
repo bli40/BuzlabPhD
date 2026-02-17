@@ -13,13 +13,12 @@ twoRegions = directory.HPC & directory.STR;
 % sessionPaths = directory.Path(sessions2analyze & animals2analyze);
 sessionPaths = directory.Path(sessions2analyze);
 disp(sessionPaths);
-sesh = 1;
 
 [hasConc, hasSync, hasMat, numEpochs] = deal(zeros(size(directory,1),1));
 whichRegions = cell(size(directory,1),1);
 verbose = true;
 
-for s = 23:24%1:numel(sessionPaths)
+for s = 1:numel(sessionPaths)
     preprocessedPaths = dir(fullfile(sessionPaths{s},'\*.photometry.*.mat'));
     [~,name,~] = fileparts(sessionPaths{s});
     fprintf('<strong>%d) %s </strong>\n',s,name)
@@ -73,7 +72,8 @@ fileTable = table(hasConc, hasSync, hasMat, whichRegions, numEpochs, ...
     'VariableNames',{'hasConc','hasSync','hasMat','whichRegions','numEpochs'});
 
 %% Sync Pre-Processed Photometry Data
-cd(sessionPaths{24});
+% sesh = 25;
+% cd(sessionPaths{sesh});
 
 overwrite = false;
 dryrun = false;
@@ -84,7 +84,7 @@ else
     fprintf('Starting Synchronization!\n');
 end
 tic;
-for sp = 1:numel(sessionPaths)
+for sp = 26%1:numel(sessionPaths)
     [~,session,~] = fileparts(sessionPaths{sp});
     fprintf(2,'<strong>Syncing %s\n</strong>',session);
     photometryDataPaths = dir(fullfile(sessionPaths{sp},'*\*_new_photometry.mat'));
@@ -221,9 +221,10 @@ end
 
 %% Concatenate
 overwrite = true;
+
 disp('Loading data for concatenation...')
 epochNames = {'sleep_1','behav_1','sleep_2'};
-for sp = 1%:numel(sessionPaths)
+for sp = 1:numel(sessionPaths)
     preprocessedPaths = dir(fullfile(sessionPaths{sp},'\*.photometry.*.mat'));
     if ~isempty(preprocessedPaths) && overwrite
         fprintf('%d) Full photometry file exists. Overwriting.\n',sp);
@@ -288,8 +289,13 @@ for sp = 1%:numel(sessionPaths)
         epochs = vertcat(epochs{:});
         concPhotom.epochs = epochs;
         concPhotom.epochNames = epochNames(whichFiles(re,:));
-
-
+        % --- replace inter-epoch interpolated values with NaNs
+        for ep = 1:size(epochs,1)-1
+            toReplace = (ts > epochs(ep,2) & ts < epochs(ep+1,1));
+            concPhotom.grabDA_df(toReplace) = nan;
+            concPhotom.grabDA_z(toReplace) = nan;
+            concPhotom.grabDA_raw(toReplace) = nan;
+        end
 
         [~,name,~] = fileparts(sessionPaths{sp});
         fprintf('\t<strong>%i) %s</strong> - %s concatenated.\n',sp,name,regions{re})

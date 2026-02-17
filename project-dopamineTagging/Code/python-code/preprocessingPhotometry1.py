@@ -25,16 +25,17 @@ df = pd.DataFrame({
 print(df.Session)
 
 # create new "Use" column if need be:
-sesh2run = df.iloc[-1]
+sesh2run = df.iloc[-2:-1]
 print('Sessions to run\n')
-for sesh in [sesh2run.Session]:
-    print(sesh)
+
+for _, row in sesh2run.iterrows():
+    print(row["Session"])
     
 answer = input("Continue? [y/n]: ")
 if answer.lower() in ["y","yes"]:
-    for sesh in [sesh2run.Path]:
-        print(sesh)
-        data_folder = Path(sesh)
+    for _, row in sesh2run.iterrows():
+        print(row["Path"])
+        data_folder = Path(row["Path"])
         
         # Find all subdirectories
         subdirs = [d for d in data_folder.iterdir() if d.is_dir()]

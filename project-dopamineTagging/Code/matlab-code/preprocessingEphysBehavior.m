@@ -35,8 +35,8 @@ spikes = loadSpikes('getWaveformsFromDat', false);
 %   - N17 :     pyrCh 121   noiseCh 111
 %   - N18 :     pyrCh 56   noiseCh 64
 %   - N19 :     
-pyrCh = 56; 
-noiseCh = 64;
+pyrCh = 121; 
+noiseCh = 111;
 % pyrCh = ripples.detectorinfo.detectionchannel;  %75 for n11 115 67 for n11
 % noiseCh = ripples.detectorinfo.noisechannel;
 [ripples] = bz_FindRipples(pwd,pyrCh,'noise',noiseCh, ...
