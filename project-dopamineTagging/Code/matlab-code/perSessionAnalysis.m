@@ -47,7 +47,7 @@ for s = 1:numel(sessionPaths)
         hasMat(s) = 1;
     end
     if numel(syncPhotometryPaths) == 0 || verbose
-        regions = unique(extractBefore({syncPhotometryPaths.name}, '-'));
+        regions = unique(extractBefore({photometryDataPaths.name}, '-'));
         for i = 1:numel(regions)
             fprintf('\t%s - %i files ready to <strong>synchronize</strong>.\n', regions{i}, sum(contains({photometryDataPaths.name},regions{i})));
             fprintf('\t\t%s\n',photometryDataPaths(contains({photometryDataPaths.name},regions{i})).name);
@@ -72,7 +72,7 @@ fileTable = table(hasConc, hasSync, hasMat, whichRegions, numEpochs, ...
     'VariableNames',{'hasConc','hasSync','hasMat','whichRegions','numEpochs'});
 
 %% Pick Session
-sesh = 3;
+sesh = 28;
 cd(sessionPaths{sesh});
 [~,name,~] = fileparts(sessionPaths{sesh});
 clearvars -except fileTable sessionPaths directory sesh name

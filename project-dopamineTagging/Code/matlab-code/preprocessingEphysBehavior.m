@@ -15,7 +15,10 @@ addpath('\\research-cifs.nyumc.org\research\buzsakilab\Buzsakilabspace\LabShare\
 getPatchTracking('basePath',pwd)
 
 %% 2. Extract LFP
-[sessionInfo] = bz_getSessionInfo(pwd, 'noPrompts', true); sessionInfo.rates.lfp = 1250;  save(strcat(sessionInfo.session.name,'.sessionInfo.mat'),'sessionInfo');
+[sessionInfo] = bz_getSessionInfo(pwd, 'noPrompts', true); 
+sessionInfo.rates.lfp = 1250;  
+save(strcat(sessionInfo.session.name,'.sessionInfo.mat'),'sessionInfo');
+
 if isempty(dir('*.lfp'))
     try 
         bz_LFPfromDat(pwd,'outFs',1250); % generating lfp

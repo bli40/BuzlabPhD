@@ -25,7 +25,7 @@ df = pd.DataFrame({
 print(df.Session)
 
 # create new "Use" column if need be:
-sesh2run = df.iloc[-2:-1]
+sesh2run = df.iloc[-2:]
 print('Sessions to run\n')
 
 for _, row in sesh2run.iterrows():

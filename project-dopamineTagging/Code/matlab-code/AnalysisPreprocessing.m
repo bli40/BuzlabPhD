@@ -168,16 +168,16 @@ end
 cd(allpath{1});
 allSess = dir('*_sess*');
 disp('Concatenate session folders...');
-sessNum = 11;
+sessNum = 5;
 
 for ii = sessNum:size(allSess,1)
     
     fprintf(' ** Concatenating session %3.i of %3.i... \n',ii, size(allSess,1));
     cd(strcat(allSess(ii).folder,'\',allSess(ii).name));
 
-    % Only concatenate if you see three folders    
-    subSess = dir();
-    if size(subSess,1)>=5
+    % Only concatenate if you see more than 1 folder    
+    subSess = dir('N*');
+    if size(subSess,1)>=1
         if ~exist(strcat(allSess(ii).name,'.xml'))
             delete(strcat(allSess(ii).name,'.xml'));% bring xml file
             copyfile(strcat(allpath{1},'\global.xml'),strcat(allSess(ii).name,'.xml'),'f');
@@ -235,7 +235,7 @@ disp('Spike sort all sessions...');
 for ii = sessNum:size(allSess,1)
     cd(strcat(allSess(ii).folder,'\',allSess(ii).name));
     
-    % Only kilosort if you see three folders    
+    Only kilosort if you see three folders    
     subSess = dir();
     if size(subSess,1)>=5
         if forcesort ||  isempty(dir('*Kilosort*')) % if not kilosorted yet
@@ -258,7 +258,7 @@ for ii = sessNum:size(allSess,1)
 
 end
 
-% %% BatchAnalysis
+%% BatchAnalysis
 % for ii = 1:size(allSess,1)
 %     cd(strcat(allSess(ii).folder,'\',allSess(ii).name));
 %     getToneTracking
