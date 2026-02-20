@@ -5,11 +5,10 @@
 import os
 import numpy as np
 import pandas as pd
-import openpyxl
 import matplotlib.pyplot as plt
-from scipy.signal import medfilt, butter, filtfilt
+from scipy.signal import butter, filtfilt
 from scipy.stats import linregress
-from scipy.optimize import curve_fit, minimize
+from scipy.optimize import curve_fit
 import scipy
 from github_code_ipshita.tools.data_import import import_ppd, preprocess_data
 from pathlib import Path
@@ -25,7 +24,7 @@ df = pd.DataFrame({
 print(df.Session)
 
 # create new "Use" column if need be:
-sesh2run = df.iloc[-2:]
+sesh2run = df.iloc[[-1]]
 print('Sessions to run\n')
 
 for _, row in sesh2run.iterrows():

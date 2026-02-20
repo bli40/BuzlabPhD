@@ -72,103 +72,81 @@ fileTable = table(hasConc, hasSync, hasMat, whichRegions, numEpochs, ...
     'VariableNames',{'hasConc','hasSync','hasMat','whichRegions','numEpochs'});
 
 %% Pick Session
-sesh = 28;
+sesh = 29;
 cd(sessionPaths{sesh});
 [~,name,~] = fileparts(sessionPaths{sesh});
 clearvars -except fileTable sessionPaths directory sesh name
 
 %% Initialize
-
-d = (dir(fullfile(sessionPaths{sesh},'N*.session.mat')));
-load(fullfile(d(1).folder, d(1).name))
-
-d = (dir(fullfile('N*.behavior.matrices.mat')));
-load(fullfile(d(1).folder, d(1).name))
-
-d = (dir(fullfile('N*.TrialBehavior.mat')));
-load(fullfile(d(1).folder, d(1).name))
-
-d = (dir(fullfile('N*.Tracking.Behavior.mat')));
-load(fullfile(d(1).folder, d(1).name))
-
-d = (dir(fullfile('N*.ripples.events.mat')));
-load(fullfile(d(1).folder, d(1).name))
-
-d = (dir(fullfile('N*.ripples.stats.mat')));
-load(fullfile(d(1).folder, d(1).name));
-
-d = (dir(fullfile('N*.SleepState.states.mat')));
-load(fullfile(d(1).folder, d(1).name))
-
-d = dir(fullfile('N*.photometry.*.mat'));
-for re = 1:numel(d)
-   photom{re} = load(fullfile(d(re).folder, d(re).name)); 
+try
+    d = (dir(fullfile(sessionPaths{sesh},'N*.session.mat')));
+    load(fullfile(d(1).folder, d(1).name))
+catch
+    disp('No session.mat file');
 end
 
 try
-    photom_hpc = photom{contains({d(:).name},'HPC')}.concPhotom;
+    d = (dir(fullfile('N*.behavior.matrices.mat')));
+    load(fullfile(d(1).folder, d(1).name))
+
+    d = (dir(fullfile('N*.TrialBehavior.mat')));
+    load(fullfile(d(1).folder, d(1).name))
+
+    d = (dir(fullfile('N*.Tracking.Behavior.mat')));
+    load(fullfile(d(1).folder, d(1).name))
 catch
-    disp('No HPC Data');
+    disp('No behavioral data.');
+end
+
+
+try
+    d = (dir(fullfile('N*.ripples.events.mat')));
+    load(fullfile(d(1).folder, d(1).name))
+    
+    d = (dir(fullfile('N*.ripples.stats.mat')));
+    load(fullfile(d(1).folder, d(1).name));
+catch
+    disp('No ripple detection.')
 end
 
 try
-    photom_str = photom{contains({d(:).name},'STR')}.concPhotom;
+    d = (dir(fullfile('N*.SleepState.states.mat')));
+    load(fullfile(d(1).folder, d(1).name))
 catch
-    disp('No STR Data');
+    disp('No sleep scoring.')
 end
 
 try
-    photom_pfc = photom{contains({d(:).name},'PFC')}.concPhotom;
+    d = dir(fullfile('N*.photometry.*.mat'));
+    for re = 1:numel(d)
+       photom{re} = load(fullfile(d(re).folder, d(re).name)); 
+    end
+    
+    try
+        photom_hpc = photom{contains({d(:).name},'HPC')}.concPhotom;
+    catch
+        disp('No HPC Data');
+    end
+    
+    try
+        photom_str = photom{contains({d(:).name},'STR')}.concPhotom;
+    catch
+        disp('No STR Data');
+    end
+    
+    try
+        photom_pfc = photom{contains({d(:).name},'PFC')}.concPhotom;
+    catch
+        disp('No PFC Data');
+    end
 catch
-    disp('No PFC Data');
+    disp('No photometry preprocessed.')
 end
 
-d = (dir(fullfile('N*.MergePoints.events.mat')));
-load(fullfile(d(1).folder, d(1).name))
+% d = (dir(fullfile('N*.MergePoints.events.mat')));
+% load(fullfile(d(1).folder, d(1).name))
 
 fprintf('%s - data loaded\n',name)
-%% Events and Photometry
-% events_possible = {'Ripples','Stims','Nosepoke','Rewarded Poke', 'Unrewarded Poke'};
-% events_name = {'Ripples','Stims','Nosepoke','Rewarded Poke'};
-% events_list = {ripples.timestamps(:,1), ripples.timestamps(:,1);...
-%                photom_hpc.stimpulseOnOff(:,1)),...
-%                     photom_str.stimpulseOnOff(:,1));...
-%                behavTrials.timestamps, behavTrials.timestamps;...
-%                behavTrials.timestamps(logical(behavTrials.reward_outcome)),behavTrials.timestamps(logical(behavTrials.reward_outcome))};
-% 
-% 
-% for e = 1:size(events_list,1)
-%     events_hpc = events_list{e,1};
-%     events_str = events_list{e,2};
-% 
-%     F1 = figure(e); clf;
-%     F1.Position = [300+(20*e) 300+(20*e) 1000 500];
-%     subplot(2,1,1);  hold on;
-%     plot(events_hpc, ones(size(events_hpc)),'|k','LineWidth',0.5,'MarkerSize',20)
-%     plot(photom_hpc.timestamps,photom_hpc.grabDA_df)
-%     YL = ylim;
-%     epochs = photom_hpc.epochs;
-%     x = [epochs(2,1) epochs(2,1) epochs(2,2) epochs(2,2)];
-%     y = [YL flip(YL)];
-%     patch(x, y, [0.7 0.7 0.7],'EdgeColor','none','FaceAlpha',0.5)
-%     title(sprintf('%s and hippocampus dopamine over whole session',events_name{e}))
-%     set(gca,'children',flipud(get(gca,'children')))
-%     xlabel('Time (s)')
-%     ylabel('z-score')
-% 
-%     subplot(2,1,2); hold on;
-%     plot(events_str, ones(size(events_str)),'|k','LineWidth',0.5,'MarkerSize',20)
-%     plot(photom_str.timestamps,photom_str.grabDA_df)
-%     YL = ylim;
-%     epochs = photom_str.epochs;
-%     x = [epochs(2,1) epochs(2,1) epochs(2,2) epochs(2,2)];
-%     y = [YL flip(YL)];
-%     patch(x, y, [0.7 0.7 0.7],'EdgeColor','none','FaceAlpha',0.5)
-%     title(sprintf('%s and striatum dopamine over whole session', events_name{e}))
-%     set(gca,'children',flipud(get(gca,'children')))
-%     xlabel('Time (s)')
-%     ylabel('z-score')
-% end
 
 %% Find Ripples - Solos and Bursts
 firstPass = ripples.timestamps;
@@ -259,9 +237,8 @@ end
 
 %% Custom Color Map
 
-
 ogCol = lines(7);
-gradCol = cell(1,numel(ogCol));
+gradCol = cell(1,size(ogCol,1));
 for c = 1:size(ogCol,1)
     gradCol{c} = customcolormap([0 0.5 1], [1 1 1; ogCol(c,:); 0 0 0],101);
     gradCol{c} = gradCol{c}([20 50 80],:);
@@ -273,6 +250,9 @@ purple = gradCol{4};
 green = gradCol{5};
 blue2 = gradCol{6};
 red = gradCol{7};
+
+fprintf('%i new colormaps added!\n',size(gradCol,2));
+
 
 %% Quick Plot (upcoming: make pretty)
 [~,name,~] = fileparts(sessionPaths{sesh});
@@ -288,6 +268,9 @@ sessionStartTime = min(cellfun(@(x) x.concPhotom.timestamps(1), photom));
 
 YL = [-10 10];
 XL = [sessionStartTime - 100, sessionEndTime + 1500];
+
+sleep1s = rippleBurst.soloTimes(:,1) < photom_hpc.epochs(2,1);
+sleep1b = rippleBurst.burstTimes(:,1) < photom_hpc.epochs(2,1);
 
 d = dir(fullfile('N*.photometry.*.mat'));
 possibleRegions = {'HPC','STR','PFC'};
@@ -331,7 +314,7 @@ for r = 1:numel(possibleRegions)
         end
         plot(solos(:,1),(-4.5)*ones(size(solos(:,1))),'|k','MarkerSize',7);
         plot(bursts(:,1),-6*ones(size(bursts(:,1))),'|b','MarkerSize',7);
-        plot(behavTrials.timestamps,(-7.5)*ones(size(behavTrials.timestamps)),'|r','MarkerSize',7)
+        % plot(behavTrials.timestamps,(-7.5)*ones(size(behavTrials.timestamps)),'|r','MarkerSize',7)
         if ~isempty(stimOnOff)
             plot(photomIdx.stimpulseOnOff(:,1),(-9)*ones(size(photomIdx.stimpulseOnOff(:,1))), ...
                 '|','Color',[0.3 0.3 0.3], 'MarkerSize',7)
@@ -352,9 +335,9 @@ end
 
 % --- RIPPLE TRIGGERED AVERAGES
 events2plot = {'solos','duos','trios'};
-events = {rippleBurst.soloTimes(:,1),...
-          rippleBurst.burstTimes(rippleBurst.burstNum == 2,1),...
-          rippleBurst.burstTimes(rippleBurst.burstNum == 3,1)};
+events = {rippleBurst.soloTimes(sleep1s,1),...
+          rippleBurst.burstTimes(rippleBurst.burstNum == 2 & sleep1b,1),...
+          rippleBurst.burstTimes(rippleBurst.burstNum == 3 & sleep1b,1)};
 durations = [-5 5];
 
 for r = 1:numel(possibleRegions)
@@ -396,8 +379,13 @@ end
 
 % --- NOSEPOKE TRIGGERED AVERAGES
 events2plot = {'re','unre'};
-events = {behavTrials.timestamps(logical(behavTrials.reward_outcome)),...
-          behavTrials.timestamps(~logical(behavTrials.reward_outcome))};
+try
+    events = {behavTrials.timestamps(logical(behavTrials.reward_outcome)),...
+              behavTrials.timestamps(~logical(behavTrials.reward_outcome))};
+catch
+    fprintf('no behavior\n')
+    events = {};
+end
 durations = [-5 5];
 
 for r = 1:numel(possibleRegions)
@@ -448,8 +436,13 @@ end
 
 % --- STIM TRIGGERED AVERAGES
 events2plot = {'long','short'};
-events = {photom_hpc.stimpulseOnOff(stimDur > 1,1),...
-          photom_hpc.stimpulseOnOff(stimDur < 1,1)};
+try
+    events = {photom_hpc.stimpulseOnOff(stimDur > 1,1),...
+              photom_hpc.stimpulseOnOff(stimDur < 1,1)};
+catch
+    fprintf('no stimulation\n')
+    events = {};
+end
 durations = [-5 5];
 
 for r = 1:numel(possibleRegions)

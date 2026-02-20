@@ -72,7 +72,7 @@ fileTable = table(hasConc, hasSync, hasMat, whichRegions, numEpochs, ...
     'VariableNames',{'hasConc','hasSync','hasMat','whichRegions','numEpochs'});
 
 %% Sync Pre-Processed Photometry Data
-sesh = 26;
+sesh = 29;
 cd(sessionPaths{sesh});
 
 overwrite = false;
@@ -84,7 +84,7 @@ else
     fprintf('Starting Synchronization!\n');
 end
 tic;
-for sp = 27:28%1:numel(sessionPaths)
+for sp = sesh%1:numel(sessionPaths)
     [~,session,~] = fileparts(sessionPaths{sp});
     fprintf(2,'<strong>Syncing %s\n</strong>',session);
     photometryDataPaths = dir(fullfile(sessionPaths{sp},'*\*_new_photometry.mat'));
@@ -224,7 +224,7 @@ overwrite = true;
 
 disp('Loading data for concatenation...')
 epochNames = {'sleep_1','behav_1','sleep_2'};
-for sp = 25:28%1:numel(sessionPaths)
+for sp = sesh%1:numel(sessionPaths)
     preprocessedPaths = dir(fullfile(sessionPaths{sp},'\*.photometry.*.mat'));
     if ~isempty(preprocessedPaths) && overwrite
         fprintf('%d) Full photometry file exists. Overwriting.\n',sp);

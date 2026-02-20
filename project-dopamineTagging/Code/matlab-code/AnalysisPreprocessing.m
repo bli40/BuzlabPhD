@@ -238,7 +238,7 @@ for ii = sessNum:size(allSess,1)
     Only kilosort if you see three folders    
     subSess = dir();
     if size(subSess,1)>=5
-        if forcesort ||  isempty(dir('*Kilosort*')) % if not kilosorted yet
+        if forcesort || isempty(dir('*Kilosort*')) % if not kilosorted yet
             fprintf(' ** Kilosorting session %3.i of %3.i... \n',ii, size(allSess,1));   
             KiloSortWrapper;
             kilosortFolder = dir('*Kilosort_*');
