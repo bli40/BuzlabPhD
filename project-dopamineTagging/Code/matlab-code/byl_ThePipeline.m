@@ -33,15 +33,15 @@
 % created by Brian Y. Li - 2026/02/20
 
 %% (0) Global Settings Variables + Initiation
-clear all; close all;
+% clear all; close all;
 % --- cd to local animal directory
 cd('B:\Brian\N18\');
 
 % --- global variables
 overwrite = false;
+forcesort = false;
 
-
-%% (1) Organize to Standard Directory Structure
+%% (1) Organize to standard directory structure
 
 % --- choose animal directory
 if ~exist('animalDir') || isempty(animalDir)
@@ -113,7 +113,7 @@ else
 end
 
 if isempty(newEpochs)
-    fprintf('No new epochs recorded! Stopping The Pipeline.\n')
+    fprintf(2,'\t<strong><<< No new epochs recorded! Stopping The Pipeline. >>></strong>\n')
     return;
 else
     for rd = 1:numel(newRecordingDates)
@@ -134,19 +134,27 @@ else
     end
 end
 
-%% (2) Concatenat -dat files
+%% (2) Concatenate -dat files
+newDir = pwd;
 cd(newDir)
 subSess = dir('N*');
 [~,name,~] = fileparts(newDir);
+
+% --- WIP
+% if ~isempty(dir('*sess*'))
+%    fprintf(2,'You are in the animal directory, not the session directory! Stopping concatenation.\n');
+%    return;
+% end
+
 if size(subSess,1)>=1
     if ~exist(strcat(name,'.xml'))
         delete(strcat(name,'.xml'));% bring xml file
         copyfile(strcat(animalDir,'\global.xml'),strcat(name,'.xml'),'f');
     end
-    % Concatenate sessions       
+    % --- Concatenate sessions       
     bz_ConcatenateDats(pwd,0,1);
 
-    %% Loading metadata
+    % --- Loading metadata
     try
         session = sessionTemplate(pwd,'showGUI',false); % 
         session.channels = 1:session.extracellular.nChannels;    
@@ -156,3 +164,61 @@ if size(subSess,1)>=1
         warning('it seems that CellExplorer is not on your path');
     end
 end    
+
+%% (3) Extract -ppd files (python) --> WIP
+haveSessions = dir('*sess*');
+haveSessions = any(isfolder({haveSessions.name}));
+
+haveEpochs = dir('N*_*_*');
+haveEpochs = any(~contains({haveEpochs.name},'sess') & isfolder({haveEpochs.name}));
+
+if haveSessions
+    fprintf(2,'\tYou are in the animal directory! Please choose a session directory.\n')
+elseif ~haveSessions && ~haveEpochs
+    fprintf(2,'\tYou are in the epoch directory! Please choose a session directory.\n')
+end
+
+thisPyEnv = pyenv;
+if thisPyEnv.Status == "Loaded"
+    terminate(pyenv)
+end
+thisPyEnv = pyenv('Version','C:\Users\Gergely\anaconda3\envs\matpy\python.exe',ExecutionMode='OutOfProcess');
+py.sys.path().append('C:\Users\Gergely\Documents\Brian\BuzlabPhD\project-dopamineTagging\Code\python-code\pyPhotometry')
+pyscript = 'C:\Users\Gergely\Documents\Brian\BuzlabPhD\project-dopamineTagging\Code\python-code\byl_extractppd.py';
+if count(py.sys.path, fileparts(pyscript)) == 0
+    py.sys.path().append(fileparts(pyscript))
+end
+
+pyrunfile(pyscript,'inputFromMatlab',pwd);
+
+%% (4) Spike sorting (matlab: kilosort3 | python: kilosort 4) --> WIP
+subSess = dir();
+if size(subSess,1)>=5
+    if forcesort || isempty(dir('*Kilosort*')) % if not kilosorted yet
+        fprintf(' ** Kilosorting session %3.i of %3.i... \n',ii, size(allSess,1));   
+        KiloSortWrapper;
+        kilosortFolder = dir('*Kilosort_*');
+        try
+            PhyAutoClustering(strcat(kilosortFolder.folder,'\',kilosortFolder.name)); % autoclustering
+        catch err
+            disp(err.message)
+            warning('PhyAutoClustering not possible!!');
+        end
+        if exist('phyLink') && ~isempty(phyLink) % move phy link to
+            kilosort_path = dir('*Kilosort*');
+            try copyfile(phyLink, strcat(kilosort_path.name,filesep,'LaunchPhy')); % copy pulTime to kilosort folder
+            end
+        end
+    end
+end
+
+%% (5) Synchronize and concatenate -ppd files
+
+
+
+
+%% (6) extract session info
+%% (7) extract behavioral data and tracking
+%% (8) extract LFP
+%% (9) extract Sleep State Scoring
+%% (10) extract ripples, ripple stats, and burst metrics
