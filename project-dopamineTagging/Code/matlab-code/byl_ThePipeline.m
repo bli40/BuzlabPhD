@@ -21,7 +21,7 @@
 % running this in batch from directories specified in an spreadsheet,
 % making this a function that can be called from the command line, etc.
 % Many functions derived from IZ and HJ.
-
+%
 % Missing Functionality (to-do):
 % - Separating epochs by recording date automatically (and reflecting this 
 %   in command line ouputs
@@ -136,5 +136,23 @@ end
 
 %% (2) Concatenat -dat files
 cd(newDir)
+subSess = dir('N*');
+[~,name,~] = fileparts(newDir);
+if size(subSess,1)>=1
+    if ~exist(strcat(name,'.xml'))
+        delete(strcat(name,'.xml'));% bring xml file
+        copyfile(strcat(animalDir,'\global.xml'),strcat(name,'.xml'),'f');
+    end
+    % Concatenate sessions       
+    bz_ConcatenateDats(pwd,0,1);
 
-
+    %% Loading metadata
+    try
+        session = sessionTemplate(pwd,'showGUI',false); % 
+        session.channels = 1:session.extracellular.nChannels;    
+        %session.channelTags.Bad.channels = [24:38 48:63];
+        save([session.general.name,'.session.mat'],'session','-v7.3');
+    catch
+        warning('it seems that CellExplorer is not on your path');
+    end
+end    
