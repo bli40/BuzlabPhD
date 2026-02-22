@@ -10,29 +10,38 @@ print('Importing Modules')
 try:
     import os
     import sys
+    print('\timported os and sys')
     import numpy as np
     import pandas as pd
     import matplotlib.pyplot as plt
     import scipy
+    print('\timported numpy, scipy, matplotlib, and pandas')
     from scipy.signal import butter, filtfilt
     from scipy.stats import linregress
     from scipy.optimize import curve_fit
+    print('\timported functions from scipy')
     from pyPhotometry.tools.data_import import import_ppd, preprocess_data
     from pathlib import Path
+    print('\timported pyPhotometry and pathlib')
 except:
-    print('Module import failed.')
+    print('\tModule import failed.')
 
 # Get session directory from Matlab function byl_ThePipeline.m
-session_dir = Path(inputFromMatlab)
+try:
+    session_dir = Path(inputFromMatlab)
+except: 
+    session_dir = Path('B:\\Brian\\N18\\N18_260221_sess11')
 
     
 print(session_dir);
-epoch_dir = session_dir.glob("N*_*")
-for subdir in epoch_dir:
-    if not subdir.is_dir():
+epoch_dir = list(session_dir.glob("N*_*"))
+
+for epoch in epoch_dir:
+    if not epoch.is_dir():
         continue
-    print(f"\t{subdir}")
+    print(f"\t{epoch}")
     
+print("Starting -ppd extraction.")
 
 for subdir in epoch_dir:
     if not subdir.is_dir():

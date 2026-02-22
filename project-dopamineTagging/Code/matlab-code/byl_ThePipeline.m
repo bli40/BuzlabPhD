@@ -213,6 +213,7 @@ if size(subSess,1)>=5
 end
 
 %% (5) Synchronize and concatenate -ppd files
+byl_syncPhotomData(pwd);
 
 
 
