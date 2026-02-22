@@ -108,9 +108,9 @@ end
 % --- concatenate photometry data.
 preprocessedPaths = dir(fullfile(sessdir,'\*.photometry.*.mat'));
 if ~isempty(preprocessedPaths) && overwrite
-    fprintf('%d) Full photometry file exists. Overwriting.\n',sp);
+    fprintf('\tFull photometry file exists. Overwriting.\n');
 elseif ~isempty(preprocessedPaths) && ~ overwrite
-    fprintf('%d) Full photometry file exists. Skipping.\n',sp);
+    fprintf('\tFull photometry file exists. Skipping.\n');
     return;
 end
 

@@ -214,12 +214,26 @@ end
 
 %% (5) Synchronize and concatenate -ppd files
 byl_syncPhotomData(pwd);
-
-
-
+byl_concatPhotomData(pwd);
 
 %% (6) extract session info
+[sessionInfo] = bz_getSessionInfo(pwd, 'noPrompts', true); 
+sessionInfo.rates.lfp = 1250;  
+save(strcat(sessionInfo.session.name,'.sessionInfo.mat'),'sessionInfo');
+
 %% (7) extract behavioral data and tracking
+getPatchTracking('basePath',pwd)
+
 %% (8) extract LFP
+if isempty(dir('*.lfp'))
+    try 
+        bz_LFPfromDat(pwd,'outFs',1250); % generating lfp
+    catch
+        disp('Problems with bz_LFPfromDat, resampling...');
+        ResampleBinary(strcat(sessionInfo.session.name,'.dat'),strcat(sessionInfo.session.name,'.lfp'),...
+            sessionInfo.nChannels,1,sessionInfo.rates.wideband/sessionInfo.rates.lfp);
+    end
+end
 %% (9) extract Sleep State Scoring
+
 %% (10) extract ripples, ripple stats, and burst metrics
