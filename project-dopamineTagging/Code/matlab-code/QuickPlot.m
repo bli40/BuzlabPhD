@@ -138,6 +138,8 @@ d = dir(fullfile('N*.photometry.*.mat'));
 possibleRegions = {'HPC','STR','PFC'};
 whichRegions = extractBetween({d.name},'photometry.','.mat');
 
+
+
 % --- SESSION METRICS
 nexttile(1,[3,1]); cla; hold on;
 title('SESSION METRICS','Color','black','FontSize',12);
@@ -187,6 +189,9 @@ text(0.1, 0.80, sprintf(['4+: %i ',repmat('(%i) ',1,numEpochs)],sum(rippleBurst.
 text(0.1, 0.86, sprintf('1s: %i',sum(rippleBurst.ripburstsize == 1)), ...
         'VerticalAlignment','top','HorizontalAlignment','left','color',blue(:,1),'Interpreter','none');
 
+% choose epochs to highlight
+ui = [5];
+
 % --- FLUORESCENCE BY REGION
 for r = 1:numel(possibleRegions)   
     figLoc = (r-1)*6 + 2;
@@ -202,15 +207,21 @@ for r = 1:numel(possibleRegions)
             'HorizontalAlignment','center');
     else
         photomIdx = photom{region}.concPhotom;
-        
-        plot(photomIdx.timestamps, photomIdx.grabDA_z, ...
-            'color',[0.5 0.5 0.5],'LineWidth',0.5)
-    
+            
         for ep = 1:numel(photomIdx.epochNames)
+            if ismember(ep, ui)
+                patch([photomIdx.epochs(ep,1) photomIdx.epochs(ep,2) ...
+                    photomIdx.epochs(ep,2) photomIdx.epochs(ep,1)], ...
+                    [YL(1) YL(1) YL(2) YL(2)], ...
+                    [1 0 0], 'FaceAlpha',0.1,'EdgeColor','none');
+            end
             plot([photomIdx.epochs(ep,1) photomIdx.epochs(ep,1)],[-10 10], ...
                 '--r')
             text(photomIdx.epochs(ep,1),YL(2)-1,photomIdx.epochNames{ep},'Color','r')
         end
+        plot(photomIdx.timestamps, photomIdx.grabDA_z, ...
+            'color',[0.5 0.5 0.5],'LineWidth',0.5)
+
         plot(rippleBurst.solos(:,1),(-4.5)*ones(size(rippleBurst.solos(:,1))),'|k','MarkerSize',7);
         plot(rippleBurst.bursts(:,1),-6*ones(size(rippleBurst.bursts(:,1))),'|b','MarkerSize',7);
         % plot(behavTrials.timestamps,(-7.5)*ones(size(behavTrials.timestamps)),'|r','MarkerSize',7)
@@ -254,10 +265,13 @@ for r = 1:numel(possibleRegions)
         for e = 1:numel(photomIdx.epochNames)
             epIdx{e} = rippleBurst.ripburst(:,1) >= photomIdx.epochs(e,1) & rippleBurst.ripburst(:,1) <= photomIdx.epochs(e,2);
         end
-        try
-            chosenEpochs = epIdx{6};
-        catch
+        if isempty(ui)
             chosenEpochs = true(size(rippleBurst.ripburst(:,1)));
+        else
+            chosenEpochs = false(size(rippleBurst.ripburst(:,1)));
+            for k = ui
+                chosenEpochs = chosenEpochs | epIdx{k};
+            end
         end
         events = {rippleBurst.ripburst(rippleBurst.ripburstsize == 1 & chosenEpochs,1),...
                   rippleBurst.ripburst(rippleBurst.ripburstsize == 2 & chosenEpochs,1),...
@@ -268,7 +282,7 @@ for r = 1:numel(possibleRegions)
         for e = 1:numel(events2plot)
             eta{r,e} = byl_getETA(events{e},data,timestamps, ...
                 'frequency',130,'normalization','zscore','durations',durations);
-            plot(eta{r,e}.window, eta{r,e}.avg, 'color', blue(e,:), 'LineWidth', 1,...
+            plot(eta{r,e}.window, eta{r,e}.avg, 'color', blue(e,:), 'LineWidth', 2,...
                 'DisplayName',sprintf('%s (%i)',events2plot{e},numel(events{e})));
             x1 = [eta{r,e}.window, fliplr(eta{r,e}.window)];
             y = [eta{r,e}.avg + eta{r,e}.sem, fliplr(eta{r,e}.avg - eta{r,e}.sem)];
