@@ -1,4 +1,5 @@
 %% List Files
+clear all; close all;
 % --- list files to be looked at
 sessdir = pwd;
 preprocessedPaths = dir(fullfile(sessdir,'\*.photometry.*.mat'));
@@ -79,8 +80,12 @@ catch
     disp('No photometry preprocessed.')
 end
 
-d = (dir(fullfile('N*.MergePoints.events.mat')));
-load(fullfile(d(1).folder, d(1).name))
+try
+    d = (dir(fullfile('N*.MergePoints.events.mat')));
+    load(fullfile(d(1).folder, d(1).name))
+catch
+    disp('No MergePoints')
+end
 
 fprintf('%s - data loaded\n',name)
 
@@ -131,26 +136,63 @@ XL = [sessionStartTime - 100, sessionEndTime + 1500];
 
 d = dir(fullfile('N*.photometry.*.mat'));
 possibleRegions = {'HPC','STR','PFC'};
-whichRegions = 
+whichRegions = extractBetween({d.name},'photometry.','.mat');
 
 % --- SESSION METRICS
 nexttile(1,[3,1]); cla; hold on;
-title('SESSION METRICS','Color','blue','FontSize',12);
+title('SESSION METRICS','Color','black','FontSize',12);
 set(gca, 'Color', 'none'); % Axes background   
-% axis off
+axis off
+
+% durations
 secondsTotal = sessionEndTime - sessionStartTime;
 h = floor(secondsTotal / 3600);
 m = floor(mod(secondsTotal, 3600) / 60);
 s = mod(secondsTotal, 60);
-text(0.05, 1, sprintf('Duration: %ih %im %0.2fs',h,m,s),...
+text(0, 1, sprintf('Duration: %ih %im %0.2fs',h,m,s),...
     'VerticalAlignment','top','FontSize',12);
-text(0.1, 0.97, sprintf('-Epoch 1:\n-Epoch 2:\n'),'VerticalAlignment','top');
+numEpochs = numel(photom_hpc.epochNames);
+for e = 1:numEpochs
+    epochEndTime = max(cellfun(@(x) x.concPhotom.epochs(e,2), photom));
+    epochStartTime = min(cellfun(@(x) x.concPhotom.epochs(e,1), photom));
+    secondsTotal = epochEndTime - epochStartTime;
+    h = floor(secondsTotal / 3600);
+    m = floor(mod(secondsTotal, 3600) / 60);
+    s = mod(secondsTotal, 60);
+    text(0.6, 1-(e*0.02), sprintf('%s:  %ih %im %0.2fs',photom_hpc.epochNames{e},h,m,s), ...
+        'VerticalAlignment','top','HorizontalAlignment','right','color','red','Interpreter','none');
+end
+
+
+
+% ripples
+for e = 1:numEpochs
+    epIdx{e} = rippleBurst.ripburst(:,1) >= photomIdx.epochs(e,1) & rippleBurst.ripburst(:,1) <= photomIdx.epochs(e,2);
+    countByEp(1,e) = [sum(rippleBurst.ripburstsize == 1 & epIdx{e})];
+    countByEp(2,e) = [sum(rippleBurst.ripburstsize == 2 & epIdx{e})];
+    countByEp(3,e) = [sum(rippleBurst.ripburstsize == 3 & epIdx{e})];
+    countByEp(4,e) = [sum(rippleBurst.ripburstsize >= 4 & epIdx{e})];
+end
+text(0, 0.88, sprintf('Ripples: %i',numel(ripples.peaks)),...
+    'VerticalAlignment','top','FontSize',12);
+                  
+text(0.1, 0.86, sprintf(['1s: %i ',repmat('(%i) ',1,numEpochs)],sum(rippleBurst.ripburstsize == 1),countByEp(1,:)), ...
+        'VerticalAlignment','top','HorizontalAlignment','left','color',blue(:,1),'Interpreter','none');
+text(0.1, 0.84, sprintf(['2s: %i ',repmat('(%i) ',1,numEpochs)],sum(rippleBurst.ripburstsize == 2),countByEp(2,:)), ...
+        'VerticalAlignment','top','HorizontalAlignment','left','color',blue(:,2),'Interpreter','none');
+text(0.1, 0.82, sprintf(['3s: %i ',repmat('(%i) ',1,numEpochs)],sum(rippleBurst.ripburstsize == 3),countByEp(3,:)), ...
+        'VerticalAlignment','top','HorizontalAlignment','left','color',blue(:,3),'Interpreter','none');
+text(0.1, 0.80, sprintf(['4+: %i ',repmat('(%i) ',1,numEpochs)],sum(rippleBurst.ripburstsize >= 4),countByEp(4,:)), ...
+        'VerticalAlignment','top','HorizontalAlignment','left','color','k','Interpreter','none');
+
+text(0.1, 0.86, sprintf('1s: %i',sum(rippleBurst.ripburstsize == 1)), ...
+        'VerticalAlignment','top','HorizontalAlignment','left','color',blue(:,1),'Interpreter','none');
 
 % --- FLUORESCENCE BY REGION
-for r = 1:numel(possibleRegions)
+for r = 1:numel(possibleRegions)   
     figLoc = (r-1)*6 + 2;
     nexttile(figLoc, [1 2]); hold on;
-    region = contains(fileTable(sesh,:).whichRegions{:}, possibleRegions{r});
+    region = contains(whichRegions, possibleRegions{r});
     if ~any(region)
         set(gca, 'Color', 'none'); % Axes background   
         axis off
@@ -170,8 +212,8 @@ for r = 1:numel(possibleRegions)
                 '--r')
             text(photomIdx.epochs(ep,1),YL(2)-1,photomIdx.epochNames{ep},'Color','r')
         end
-        plot(solos(:,1),(-4.5)*ones(size(solos(:,1))),'|k','MarkerSize',7);
-        plot(bursts(:,1),-6*ones(size(bursts(:,1))),'|b','MarkerSize',7);
+        plot(rippleBurst.solos(:,1),(-4.5)*ones(size(rippleBurst.solos(:,1))),'|k','MarkerSize',7);
+        plot(rippleBurst.bursts(:,1),-6*ones(size(rippleBurst.bursts(:,1))),'|b','MarkerSize',7);
         % plot(behavTrials.timestamps,(-7.5)*ones(size(behavTrials.timestamps)),'|r','MarkerSize',7)
         if ~isempty(stimOnOff)
             plot(photomIdx.stimpulseOnOff(:,1),(-9)*ones(size(photomIdx.stimpulseOnOff(:,1))), ...
@@ -193,15 +235,12 @@ end
 
 % --- RIPPLE TRIGGERED AVERAGES
 events2plot = {'solos','duos','trios'};
-events = {rippleBurst.soloTimes(sleep1s,1),...
-          rippleBurst.burstTimes(rippleBurst.burstNum == 2 & sleep1b,1),...
-          rippleBurst.burstTimes(rippleBurst.burstNum == 3 & sleep1b,1)};
 durations = [-5 5];
 
 for r = 1:numel(possibleRegions)
     figLoc = (r-1)*6 + 4;
     nexttile(figLoc); hold on;
-    region = contains(fileTable(sesh,:).whichRegions{:}, possibleRegions{r});
+    region = contains(whichRegions, possibleRegions{r});
     if ~any(region)
         set(gca, 'Color', 'none'); % Axes background   
         axis off
@@ -211,12 +250,23 @@ for r = 1:numel(possibleRegions)
             'FontWeight','bold', ...
             'HorizontalAlignment','center');
     else
-       
+        % --- logical indices for each epoch
         photomIdx = photom{region}.concPhotom;
+        for e = 1:numel(photomIdx.epochNames)
+            epIdx{e} = rippleBurst.ripburst(:,1) >= photomIdx.epochs(e,1) & rippleBurst.ripburst(:,1) <= photomIdx.epochs(e,2);
+        end
+        try
+            chosenEpochs = epIdx{6};
+        catch
+            chosenEpochs = true(size(rippleBurst.ripburst(:,1)));
+        end
+        events = {rippleBurst.ripburst(rippleBurst.ripburstsize == 1 & chosenEpochs,1),...
+                  rippleBurst.ripburst(rippleBurst.ripburstsize == 2 & chosenEpochs,1),...
+                  rippleBurst.ripburst(rippleBurst.ripburstsize == 3 & chosenEpochs,1)};
         data = photomIdx.grabDA_z;
         timestamps = photomIdx.timestamps;
 
-        for e = 1:numel(events)
+        for e = 1:numel(events2plot)
             eta{r,e} = byl_getETA(events{e},data,timestamps, ...
                 'frequency',130,'normalization','zscore','durations',durations);
             plot(eta{r,e}.window, eta{r,e}.avg, 'color', blue(e,:), 'LineWidth', 2,...
@@ -249,7 +299,7 @@ durations = [-5 5];
 for r = 1:numel(possibleRegions)
     figLoc = (r-1)*6 + 5;
     nexttile(figLoc); cla; hold on;
-    region = contains(fileTable(sesh,:).whichRegions{:}, possibleRegions{r});
+    region = contains(whichRegions, possibleRegions{r});
 
     if isempty(events)
         set(gca, 'Color', 'none'); % Axes background   
@@ -306,7 +356,7 @@ durations = [-5 5];
 for r = 1:numel(possibleRegions)
     figLoc = ((r-1)*6) + 6;
     nexttile(figLoc); cla; hold on;
-    region = contains(fileTable(sesh,:).whichRegions{:}, possibleRegions{r});
+    region = contains(whichRegions, possibleRegions{r});
 
     if isempty(events)
         set(gca, 'Color', 'none'); % Axes background   
