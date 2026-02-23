@@ -164,10 +164,9 @@ for e = 1:numEpochs
 end
 
 
-
 % ripples
 for e = 1:numEpochs
-    epIdx{e} = rippleBurst.ripburst(:,1) >= photomIdx.epochs(e,1) & rippleBurst.ripburst(:,1) <= photomIdx.epochs(e,2);
+    epIdx{e} = rippleBurst.ripburst(:,1) >= photom_hpc.epochs(e,1) & rippleBurst.ripburst(:,1) <= photom_hpc.epochs(e,2);
     countByEp(1,e) = [sum(rippleBurst.ripburstsize == 1 & epIdx{e})];
     countByEp(2,e) = [sum(rippleBurst.ripburstsize == 2 & epIdx{e})];
     countByEp(3,e) = [sum(rippleBurst.ripburstsize == 3 & epIdx{e})];
@@ -269,7 +268,7 @@ for r = 1:numel(possibleRegions)
         for e = 1:numel(events2plot)
             eta{r,e} = byl_getETA(events{e},data,timestamps, ...
                 'frequency',130,'normalization','zscore','durations',durations);
-            plot(eta{r,e}.window, eta{r,e}.avg, 'color', blue(e,:), 'LineWidth', 2,...
+            plot(eta{r,e}.window, eta{r,e}.avg, 'color', blue(e,:), 'LineWidth', 1,...
                 'DisplayName',sprintf('%s (%i)',events2plot{e},numel(events{e})));
             x1 = [eta{r,e}.window, fliplr(eta{r,e}.window)];
             y = [eta{r,e}.avg + eta{r,e}.sem, fliplr(eta{r,e}.avg - eta{r,e}.sem)];
