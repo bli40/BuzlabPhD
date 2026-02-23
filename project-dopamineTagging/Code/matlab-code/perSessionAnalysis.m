@@ -72,9 +72,11 @@ fileTable = table(hasConc, hasSync, hasMat, whichRegions, numEpochs, ...
     'VariableNames',{'hasConc','hasSync','hasMat','whichRegions','numEpochs'});
 
 %% Pick Session
-sesh = 29;
-cd(sessionPaths{sesh});
-[~,name,~] = fileparts(sessionPaths{sesh});
+% sesh = 29;
+% cd(sessionPaths{sesh});
+% [~,name,~] = fileparts(sessionPaths{sesh});
+thisdir = dir('*.session.mat');
+[~,name,~] = fileparts(thisdir.folder);
 clearvars -except fileTable sessionPaths directory sesh name
 
 %% Initialize

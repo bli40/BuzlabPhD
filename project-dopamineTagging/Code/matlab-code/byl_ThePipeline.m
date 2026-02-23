@@ -215,7 +215,7 @@ end
 %% (5) Synchronize and concatenate -ppd files
 byl_syncPhotomData(pwd);
 byl_concatPhotomData(pwd);
-
+% --- to-do: pass string list to rename epochs
 %% (6) extract session info
 [sessionInfo] = bz_getSessionInfo(pwd, 'noPrompts', true); 
 sessionInfo.rates.lfp = 1250;  
@@ -235,5 +235,127 @@ if isempty(dir('*.lfp'))
     end
 end
 %% (9) extract Sleep State Scoring
+% badChannels = [24:38 48:63]; %N7
+% badChannels = [0:3 15:18 21:30 43 50 95 97]; %N9
+% badChannels = [20:38]; %N11
+% badChannels = [74]; %N14
+% badChannels = [0:3 15:18 21:30 41 43 46 47 50 52 95 97]; %N15
+% badChannels = [42 48 56:59 61 70 72]; %N17
+badChannels = [1,2,4:14,74,82,83,91,92,112:118,120:126]; %N18
+
+SleepScoreMaster(pwd,'stickytrigger',true,'rejectChannels',badChannels); % try to sleep score
 
 %% (10) extract ripples, ripple stats, and burst metrics
+% Dictionary 
+%   - N11 : 
+%   - N17 :     pyrCh 121   noiseCh 111
+%   - N18 :     pyrCh 56   noiseCh 64
+%   - N19 :     
+pyrCh = 71; 
+noiseCh = 79;
+% pyrCh = ripples.detectorinfo.detectionchannel;  %75 for n11 115 67 for n11
+% noiseCh = ripples.detectorinfo.noisechannel;
+[ripples] = bz_FindRipples(pwd,pyrCh,'noise',noiseCh, ...
+                                     'savemat',true, ...
+                                     'durations',[30 200], ...
+                                     'passband',[130 250], ...
+                                     'thresholds',[2 5]);%, ...
+                                     % 'restrict',SleepState.ints.NREMstate);
+
+% --- get ripple stats                                     
+pyrCh = bz_GetLFP(ripples.detectorinfo.detectionchannel);
+ripLFP = bz_Filter(pyrCh.data,'passband',ripples.detectorinfo.detectionparms.passband);
+[maps,data,stats] = bz_RippleStats(ripLFP, pyrCh.timestamps,ripples);
+rippleStats = struct('maps',maps,'data',data','stats',stats);
+d = dir('*ripples.events.mat');
+[~,name,~] = fileparts(d.folder);
+save(join([name,'.ripples.stats.mat']),"rippleStats");
+
+% --- find ripples - solos and bursts
+firstPass = ripples.timestamps;
+
+% Merge ripples if inter-ripple period is too short <- from bz_FindRipples
+disp(['Before ripple burst merge: ' num2str(length(firstPass)) ' events.'])
+minInterRippleInterval = 0.150; %s;
+secondPass = [];
+id = [];
+ripple = firstPass(1,:);
+for i = 2:size(firstPass,1)
+	if firstPass(i,1) - ripple(2) < minInterRippleInterval
+		% Merge
+		ripple = [ripple(1) firstPass(i,2)];    % prev ripple's endpoint is replaced by current ripple's endpoint. /kg
+	    id = [id; 1];
+    else
+		secondPass = [secondPass; ripple];     % secondPass is updated each cycle and contains all previous ripples. /kg
+		ripple = firstPass(i,:);                % ripple is updated each cycle and contains start and end indices. /kg
+    end
+end
+
+secondPass = [secondPass ; ripple];
+if isempty(secondPass)
+	disp('Ripple burst merge failed');
+	return
+else
+	disp(['After ripple burst merge: ' num2str(length(secondPass)) ' events.']);
+end
+solos = intersect(firstPass, secondPass, 'rows');
+bursts = setdiff(secondPass, firstPass, 'rows');
+ripburst = secondPass;
+
+% --- Ripple Burst Index and Size
+aa = ismember(ripples.timestamps, bursts);
+bb = cumsum(aa);
+cc = bb(:,1) > bb(:,2);
+cc = cc + aa(:,2);
+ripBurstNum = cumsum(aa(:,1));
+ripBurstNum(~logical(cc)) = 0;
+[ripBurstIdx, ripBurstRevIdx, ripSizeAll] = deal(cc);
+for i = 1:max(unique(ripBurstNum))
+    ripBurstIdx(ripBurstNum == i) = cumsum(cc(ripBurstNum == i));
+    ripBurstRevIdx(ripBurstNum == i) = flip(cumsum(cc(ripBurstNum == i)));
+    ripSizeAll(ripBurstNum == i) = sum(cc(ripBurstNum == i));
+    burstsize(i,:) = ripSizeAll(find(ripBurstNum == i,1,'first'));
+end
+ripSizeAll(ripSizeAll == 0) = 1;
+
+ripBurstSize = nan(size(ripburst(:,1)));
+[~,~,isolo] = intersect(solos(:,1), ripburst(:,1));
+ripBurstSize(isolo) = 1;
+[~,ia,iburst] = intersect(bursts(:,1), ripburst(:,1));
+ripBurstSize(iburst) = burstsize(ia);
+
+% check
+fprintf('%i/%i ripple bursts indexed\n',max(ripBurstNum),length(bursts));
+
+
+% --- Ripple Burst Index and Size -> structure!
+rippleBurst = struct('ripburst',ripburst, ...
+                     'ripburstsize',ripBurstSize, ...
+                     'solos',solos, ...
+                     'bursts',bursts, ...
+                     'burstsize',burstsize, ...
+                     'ripsizeall',ripSizeAll, ...
+                     'ripburstidx',ripBurstIdx, ...
+                     'reverseidx',ripBurstRevIdx);
+
+% rippleBurst = struct('solos', ripBurstIdx == 0,...
+%                      'bursts', ripBurstIdx ~= 0, ...
+%                      'duos', ripBurstSize == 2,...
+%                      'trios', ripBurstSize == 3, ...
+%                      'quartets', ripBurstSize == 4, ...
+%                      'quintets', ripBurstSize == 5, ...
+%                      'first', ripBurstIdx == 1, ...
+%                      'second', ripBurstIdx == 2, ...
+%                      'third', ripBurstIdx == 3, ...
+%                      'fourth', ripBurstIdx == 4, ...
+%                      'fifth', ripBurstIdx == 5, ...
+%                      'last', ripBurstRevIdx == 1, ...
+%                      'notLast', ripBurstRevIdx ~= 1 | 0, ...
+%                      'burstIndex', ripBurstNum, ...
+%                      'burstNum', burstSize, ...
+%                      'burstTimes', bursts, ...
+%                      'soloTimes', solos);
+fprintf('rippleBurst structure complete.\n');
+d = dir('*.ripples.events.mat');
+[~,name,~] = fileparts(d.folder);
+save(join([name,'.ripples.bursts.mat']),"rippleBurst");
