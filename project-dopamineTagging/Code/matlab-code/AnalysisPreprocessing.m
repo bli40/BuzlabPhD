@@ -113,62 +113,62 @@ if ischar(analysisList)
 end
 
 %% Build sessions
-disp('Building session folders (It assumes session as all folder at a certain depth recordered on the same day)...');
-allFolder = dir(pwd);
-
-for ii = 1:length(allFolder)
-    % Find max sessNumber already
-    a = dir('*sess*');
-    startSess = 0;
-    for jj = 1:size(a)
-        num = regexp(a(jj).name, 'sess(\d+)', 'tokens');
-        num = str2double(num{1});
-        if num>startSess
-            startSess = num;
-        end
-    end
-    if strlength(allFolder(ii).name) > 12 && isfolder(allFolder(ii).name) % if looks like a data folder
-        folderFiels = strsplit(allFolder(ii).name,'_');
-        if numel(folderFiels) == 4 % if the depth is included in the folder name
-            if isempty(dir(strcat('*',folderFiels{2},'_',folderFiels{3},'_','sess*'))) % if there is no session folder yet
-                mkdir(strcat(folderFiels{1},'_',folderFiels{2},'_',folderFiels{3},'_','sess',num2str(size(dir('*sess*'),1) + 1))); % create folder
-            end
-            if ~contains(folderFiels{4},'sess') % if it is not a session folder
-                targetfoder = dir(strcat(folderFiels{1},'_',folderFiels{2},'_',folderFiels{3},'_','sess*'));
-                movefile(strcat('*',folderFiels{2},'_',folderFiels{3},'_',folderFiels{4}),targetfoder.name); % move to session folder
-            end
-        elseif numel(folderFiels) == 3
-            if isempty(dir(strcat('*',folderFiels{2},'_','sess*'))) % if there is no session folder yet
-                mkdir(strcat(folderFiels{1},'_',folderFiels{2},'_','sess',num2str(startSess + 1))); % create folder
-            end
-            if ~contains(folderFiels{3},'sess') % if it is not a session folder
-                targetfoder = dir(strcat(folderFiels{1},'_',folderFiels{2},'_','sess*'));
-                movefile(strcat('*',folderFiels{2},'_',folderFiels{3}),targetfoder.name); % move to session folder
-            end            
-        end 
-    end
-end
-
-% If recordered with intan Buz Edit, change dat file name
-allpath = strsplit(genpath(expPath),';'); % all folders again
-for ii = 1:size(allpath,2)
-    if strlength(allpath{ii}) > 12 && isfolder(allpath{ii}) % if looks like a data folder
-        cd(allpath{ii});
-        if ~isempty(dir('amplifier_analogin_auxiliary_int16.dat')) % if recordered with intan Buz Edit
-            movefile(strcat(allpath{ii},'\','amplifier_analogin_auxiliary_int16.dat'),strcat(allpath{ii},'\','amplifier.dat'));
-            try  movefile('amplifier_analogin_auxiliary_int16.xml','amplifier.xml');
-                movefile('amplifier_analogin_auxiliary_int16.nrs','amplifier.nrs');
-            end
-        end
-    end
-end
+% disp('Building session folders (It assumes session as all folder at a certain depth recordered on the same day)...');
+% allFolder = dir(pwd);
+% 
+% for ii = 1:length(allFolder)
+%     % Find max sessNumber already
+%     a = dir('*sess*');
+%     startSess = 0;
+%     for jj = 1:size(a)
+%         num = regexp(a(jj).name, 'sess(\d+)', 'tokens');
+%         num = str2double(num{1});
+%         if num>startSess
+%             startSess = num;
+%         end
+%     end
+%     if strlength(allFolder(ii).name) > 12 && isfolder(allFolder(ii).name) % if looks like a data folder
+%         folderFiels = strsplit(allFolder(ii).name,'_');
+%         if numel(folderFiels) == 4 % if the depth is included in the folder name
+%             if isempty(dir(strcat('*',folderFiels{2},'_',folderFiels{3},'_','sess*'))) % if there is no session folder yet
+%                 mkdir(strcat(folderFiels{1},'_',folderFiels{2},'_',folderFiels{3},'_','sess',num2str(size(dir('*sess*'),1) + 1))); % create folder
+%             end
+%             if ~contains(folderFiels{4},'sess') % if it is not a session folder
+%                 targetfoder = dir(strcat(folderFiels{1},'_',folderFiels{2},'_',folderFiels{3},'_','sess*'));
+%                 movefile(strcat('*',folderFiels{2},'_',folderFiels{3},'_',folderFiels{4}),targetfoder.name); % move to session folder
+%             end
+%         elseif numel(folderFiels) == 3
+%             if isempty(dir(strcat('*',folderFiels{2},'_','sess*'))) % if there is no session folder yet
+%                 mkdir(strcat(folderFiels{1},'_',folderFiels{2},'_','sess',num2str(startSess + 1))); % create folder
+%             end
+%             if ~contains(folderFiels{3},'sess') % if it is not a session folder
+%                 targetfoder = dir(strcat(folderFiels{1},'_',folderFiels{2},'_','sess*'));
+%                 movefile(strcat('*',folderFiels{2},'_',folderFiels{3}),targetfoder.name); % move to session folder
+%             end            
+%         end 
+%     end
+% end
+% 
+% % If recordered with intan Buz Edit, change dat file name
+% allpath = strsplit(genpath(expPath),';'); % all folders again
+% for ii = 1:size(allpath,2)
+%     if strlength(allpath{ii}) > 12 && isfolder(allpath{ii}) % if looks like a data folder
+%         cd(allpath{ii});
+%         if ~isempty(dir('amplifier_analogin_auxiliary_int16.dat')) % if recordered with intan Buz Edit
+%             movefile(strcat(allpath{ii},'\','amplifier_analogin_auxiliary_int16.dat'),strcat(allpath{ii},'\','amplifier.dat'));
+%             try  movefile('amplifier_analogin_auxiliary_int16.xml','amplifier.xml');
+%                 movefile('amplifier_analogin_auxiliary_int16.nrs','amplifier.nrs');
+%             end
+%         end
+%     end
+% end
 
 
 %% Concatenate sessions
 cd(allpath{1});
 allSess = dir('*_sess*');
 disp('Concatenate session folders...');
-sessNum = 5;
+sessNum = 10;
 
 for ii = sessNum:size(allSess,1)
     
@@ -238,7 +238,7 @@ for ii = sessNum:size(allSess,1)
     Only kilosort if you see three folders    
     subSess = dir();
     if size(subSess,1)>=5
-        if forcesort ||  isempty(dir('*Kilosort*')) % if not kilosorted yet
+        if forcesort || isempty(dir('*Kilosort*')) % if not kilosorted yet
             fprintf(' ** Kilosorting session %3.i of %3.i... \n',ii, size(allSess,1));   
             KiloSortWrapper;
             kilosortFolder = dir('*Kilosort_*');
@@ -255,7 +255,6 @@ for ii = sessNum:size(allSess,1)
             end
         end
     end
-
 end
 
 %% BatchAnalysis
