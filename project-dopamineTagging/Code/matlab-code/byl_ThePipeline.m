@@ -35,7 +35,7 @@
 %% (0) Global Settings Variables + Initiation
 % clear all; close all;
 % --- cd to local animal directory
-cd('B:\Brian\N18\');
+cd('C:\Users\brian\Documents\BYL\project-dopamine-tagging\N18\');
 
 % --- global variables
 overwrite = false;
@@ -237,7 +237,7 @@ end
 %% (9) extract Sleep State Scoring
 % badChannels = [24:38 48:63]; %N7
 % badChannels = [0:3 15:18 21:30 43 50 95 97]; %N9
-% badChannels = [20:38]; %N11
+% badChannels = [20:38]; %N11   
 % badChannels = [74]; %N14
 % badChannels = [0:3 15:18 21:30 41 43 46 47 50 52 95 97]; %N15
 % badChannels = [42 48 56:59 61 70 72]; %N17
