@@ -243,7 +243,7 @@ end
 % badChannels = [42 48 56:59 61 70 72]; %N17
 badChannels = [1,2,4:14,74,82,83,91,92,112:118,120:126]; %N18
 
-SleepScoreMaster(pwd,'stickytrigger',true,'rejectChannels',badChannels); % try to sleep score
+SleepScoreMaster(pwd,'rejectChannels',badChannels); % try to sleep score
 
 %% (10) extract ripples, ripple stats, and burst metrics
 % Dictionary 
