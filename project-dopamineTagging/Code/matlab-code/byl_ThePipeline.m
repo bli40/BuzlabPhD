@@ -33,10 +33,10 @@
 % created by Brian Y. Li - 2026/02/20
 
 %% (0) Global Settings Variables + Initiation
-% clear all; close all;
+clear all; close all;
 % --- cd to local animal directory
-cd('C:\Users\brian\Documents\BYL\project-dopamine-tagging\N18\');
-
+cd('C:\Users\brian\Documents\BYL\project-dopamine-tagging\M016\');
+% cd('C:\Users\brian\Documents\BYL\project-opto-ripples\M008\')
 % --- global variables
 overwrite = false;
 forcesort = false;
@@ -80,25 +80,42 @@ fprintf('\nBuilding session folders (all epochs recorded on same day)\n');
 allSess = dir(pwd);
 
 % --- Find max session number already
-aaa = dir('N*');
+aaa = dir('M*');
 bbb = dir('*sess*');
 
 namesA = {aaa.name};
 namesB = {bbb.name};
 diffNames = setdiff(namesA, namesB);
 
-[~,idx] = ismember(diffNames, namesA);
-newEpochs = aaa(idx);
+% --- select files to concatenate
+if isstring(diffNames), diffNames = cellstr(diffNames); end
+
+disp('Select epoch files to concatenate...')
+[indx, tf] = listdlg('ListString', diffNames, ...
+                     'PromptString', 'Select epoch files to concatenate:', ...
+                     'SelectionMode', 'multiple', ...
+                     'ListSize',[300 300]);
+commandwindow;
+if ~tf
+    error('No file(s) selected.');
+else
+    newEpochs = aaa(indx);
+end
 
 % --- check most recent session is populated. If not, then populate.
 existingSessions = cellfun(@(x) str2double(extractAfter(x,'_sess')), {bbb.name});
-startSess = max(existingSessions);
-lastSessIdx = contains({bbb.name},join(['sess',string(startSess)],''));
-if numel(dir(fullfile(bbb(lastSessIdx).folder,bbb(lastSessIdx).name))) <=2
-    startSess = startSess-1;
+if isempty(existingSessions);
+    startSess = 0;
+else
+    startSess = max(existingSessions);
+    lastSessIdx = contains({bbb.name},join(['sess',string(startSess)],''));
+    if numel(dir(fullfile(bbb(lastSessIdx).folder,bbb(lastSessIdx).name))) <=2
+        startSess = startSess-1;
+    end
 end
 
-newRecordingDates = unique(cellfun(@(x) extractBetween(x, '_','_'), {newEpochs.name}));
+newRecordingDates = cellfun(@(x) extractBetween(x, '_','_'), {newEpochs.name});
+uniqueRecordingDates = unique(newRecordingDates);
 animal = unique(cellfun(@(x) extractBefore(x, '_'), {newEpochs.name}, 'UniformOutput', false));
 
 
@@ -109,27 +126,28 @@ if numel(existingSessions) ~= max(existingSessions)
     end
 else
     fprintf('\t%i sessions exist. Merging %i epochs into %i session(s).\n', ...
-        numel(existingSessions),numel(newEpochs),numel(newRecordingDates));
+        numel(existingSessions),numel(newEpochs),numel(uniqueRecordingDates));
 end
 
 if isempty(newEpochs)
     fprintf(2,'\t<strong><<< No new epochs recorded! Stopping The Pipeline. >>></strong>\n')
     return;
 else
-    for rd = 1:numel(newRecordingDates)
-        specificEpochs = dir(join(['*',newRecordingDates{rd},'*']));
-        sessName = join([animal,newRecordingDates,sprintf('sess%i',startSess+rd)],'_');
+    for rd = 1:numel(uniqueRecordingDates)
+        specificEpochs = dir(join(['*',uniqueRecordingDates{rd},'*']));
+        sessName = join([animal,uniqueRecordingDates{rd},sprintf('sess%i',startSess+rd)],'_');
         sessName = sessName{1};
         newDir = fullfile(animalDir,sessName);
+        theseEpochs = newEpochs(cellfun(@(x) contains(x,uniqueRecordingDates{rd}), {newEpochs.name}));
 
         fprintf('\t%s\n',newDir);        
         if isempty(dir(newDir))
             mkdir(newDir);
         end
-        for ep = 1:numel(newEpochs)
-            thisEpoch = fullfile(newEpochs(ep).folder, newEpochs(ep).name);
+        for ep = 1:numel(theseEpochs)
+            thisEpoch = fullfile(theseEpochs(ep).folder, theseEpochs(ep).name);
             movefile(thisEpoch,newDir)
-            fprintf(2,'\t\t%s\n',newEpochs(ep).name);
+            fprintf(2,'\t\t%s\n',theseEpochs(ep).name);
         end
     end
 end
@@ -137,7 +155,7 @@ end
 %% (2) Concatenate -dat files
 newDir = pwd;
 cd(newDir)
-subSess = dir('N*');
+subSess = dir('M*');
 [~,name,~] = fileparts(newDir);
 
 % --- WIP
@@ -158,11 +176,12 @@ if size(subSess,1)>=1
     try
         session = sessionTemplate(pwd,'showGUI',false); % 
         session.channels = 1:session.extracellular.nChannels;    
-        %session.channelTags.Bad.channels = [24:38 48:63];
         save([session.general.name,'.session.mat'],'session','-v7.3');
     catch
         warning('it seems that CellExplorer is not on your path');
     end
+else
+    fprintf(2,'No sub-sessions for today! Re-naming -dat and -xml files to match parent directory.')
 end    
 
 %% (3) Extract -ppd files (python) --> WIP
@@ -240,8 +259,9 @@ end
 % badChannels = [20:38]; %N11   
 % badChannels = [74]; %N14
 % badChannels = [0:3 15:18 21:30 41 43 46 47 50 52 95 97]; %N15
-% badChannels = [42 48 56:59 61 70 72]; %N17
-badChannels = [1,2,4:14,74,82,83,91,92,112:118,120:126]; %N18
+badChannels = [42 48 56:59 61 70 72]; %N17
+% badChannels = [1,2,4:14,74,82,83,91,92,112:118,120:126]; %N18
+
 
 SleepScoreMaster(pwd,'rejectChannels',badChannels); % try to sleep score
 
