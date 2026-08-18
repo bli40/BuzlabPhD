@@ -35,8 +35,8 @@
 %% (0) Global Settings Variables + Initiation
 clear all; close all;
 % --- cd to local animal directory
-% cd('C:\Users\brian\Documents\BYL\project-dopamine-tagging\M016\');
-cd('C:\Users\brian\Documents\BYL\project-opto-ripples\M008\')
+cd('C:\Users\brian\Documents\BYL\project-dopamine-tagging\M016\');
+% cd('C:\Users\brian\Documents\BYL\project-opto-ripples\M008\')
 % --- global variables
 overwrite = false;
 forcesort = false;

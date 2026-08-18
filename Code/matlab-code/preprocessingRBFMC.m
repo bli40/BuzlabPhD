@@ -8,55 +8,62 @@ clear all;
 close all;
 
 %% Load Data CSV
+subepoch = 2;
+lw = 1;
+
 EI_file = dir("*_0000.csv");
 E1_file = dir("*_0001.csv");
 E2_file = dir("*_0002.csv");
 
-EI = readtable(string(EI_file(1).name));
-E1 = readtable(string(E1_file(1).name));
-E2 = readtable(string(E2_file(1).name));
+EI = readtable(string(EI_file(subepoch).name));
+E1 = readtable(string(E1_file(subepoch).name));
+E2 = readtable(string(E2_file(subepoch).name));
 
 % --- plot ROIs and traces
 f1 = figure(1);
-t1 = tiledlayout(3,1);
+t1 = tiledlayout(3,1,'TileSpacing','tight','Padding','compact');
 tt1 = title(t1, 'Step 1: Raw Data');
 col = lines(7);
 
+
 % --- region 1
-nt1 = nexttile(1); hold on;
+nt1 = nexttile(1); hold on; grid on;
 title("ROI 1 (NAc)");
 nt1.TitleHorizontalAlignment = 'left';
-xlabel("time (s)");
+% xlabel("time (s)");
+xticklabels('');
 ylabel("CMOS Intensity");
 
 % EI_1 = plot(EI.Time, EI.ROI01, 'LineWidth',1,'Color',col(7,:));
-g1 = plot(E1.Time, E1.ROI01,'-','LineWidth',2,'Color',col(5,:));
-r1 = plot(E2.Time, E2.ROI01,'-', 'LineWidth',2,'Color',col(2,:));
+g1 = plot(E1.Time, E1.ROI01,'-','LineWidth',lw,'Color',col(5,:));
+r1 = plot(E2.Time, E2.ROI01,'-', 'LineWidth',lw,'Color',col(2,:));
 
 % --- region 2
-nt2 = nexttile(2); hold on;
+nt2 = nexttile(2); hold on; grid on;
 title("ROI 2 (empty)");
 nt2.TitleHorizontalAlignment = 'left';
-xlabel("time (s)");
+% xlabel("time (s)");
+xticklabels('');
+
 ylabel("CMOS Intensity");
 
 % EI_1 = plot(EI.Time, EI.ROI01, 'LineWidth',1,'Color',col(7,:));
-g2 = plot(E1.Time, E1.ROI02,'-','LineWidth',2,'Color',col(5,:));
-r2 = plot(E2.Time, E2.ROI02,'-', 'LineWidth',2,'Color',col(2,:));
+g2 = plot(E1.Time, E1.ROI02,'-','LineWidth',lw,'Color',col(5,:));
+r2 = plot(E2.Time, E2.ROI02,'-', 'LineWidth',lw,'Color',col(2,:));
 
 % --- region 3
-nt3 = nexttile(3); hold on;
+nt3 = nexttile(3); hold on; grid on;
 title("ROI 3 (HPC)");
 nt3.TitleHorizontalAlignment = 'left';
 xlabel("time (s)");
 ylabel("CMOS Intensity");
 
 % EI_1 = plot(EI.Time, EI.ROI01, 'LineWidth',1,'Color',col(7,:));
-g3 = plot(E1.Time, E1.ROI03,'-','LineWidth',2,'Color',col(5,:));
-r3 = plot(E2.Time, E2.ROI03,'-', 'LineWidth',2,'Color',col(2,:));
+g3 = plot(E1.Time, E1.ROI03,'-','LineWidth',lw,'Color',col(5,:));
+r3 = plot(E2.Time, E2.ROI03,'-', 'LineWidth',lw,'Color',col(2,:));
 
 %% De-Noising
-tt1.String = "Step 2: De-noising via 10 Hz Low-Pass Filter"
+tt1.String = "Step 2: De-noising via 10 Hz Low-Pass Filter";
 fs = 30; 
 fc = 10;
 [b, a] = butter(2,fc/(fs/2));
@@ -83,6 +90,7 @@ drawnow;
 %% Photobleaching Correction
 f2 = figure(2); clf; hold on;
 t2 = tiledlayout(3,1);
+title(t2, 'Double Exponential Fit Output')
 
 nexttile(1); hold on;
 % --- double exponential fit for green ROI1
