@@ -35,8 +35,8 @@
 %% (0) Global Settings Variables + Initiation
 clear all; close all;
 % --- cd to local animal directory
-cd('C:\Users\brian\Documents\BYL\project-dopamine-tagging\M016\');
-% cd('C:\Users\brian\Documents\BYL\project-opto-ripples\M008\')
+% cd('C:\Users\brian\Documents\BYL\project-dopamine-tagging\M016\');
+cd('C:\Users\brian\Documents\BYL\project-opto-ripples\M008\')
 % --- global variables
 overwrite = false;
 forcesort = false;
@@ -59,14 +59,28 @@ if isempty(dir('global.xml'))
     disp('No xml global file! Looking for it...');
     xmlFile = []; ii = 2;
     while isempty(xmlFile) && ii < size(allpath,2)
-        disp(ii);
+        % disp(ii);
         cd(allpath{ii});
         xmlFile = dir('*.xml');
         ii = ii + 1;
     end
     if isempty(xmlFile)    
         [file, path] = uigetfile('*.xml','Select global xml file');
-        copyfile(strcat(path,file),'global.xml');
+        if file==0 && path==0
+            answer = questdlg("No global.xml selected or found. Skip this step and continue? (Do this if you are grouping non-ephys recordings)", ...
+                'Continue?','Yes','No','');
+            commandwindow;
+            switch answer
+                case 'Yes'
+                    % Continue: do nothing (or place skipped-step code here)
+                case {'No', ''} % '' covers window-close / Esc
+                    fprintf('User chose to stop. Exiting.\n');
+                    return; % stop running the rest of the script
+            end
+            
+        else
+            copyfile(strcat(path,file),'global.xml');
+        end
     else
         copyfile(strcat(xmlFile(1).folder,filesep,xmlFile(1).name),strcat(allpath{1},filesep,'global.xml'));
     end
@@ -85,26 +99,31 @@ bbb = dir('*sess*');
 
 namesA = {aaa.name};
 namesB = {bbb.name};
-diffNames = setdiff(namesA, namesB);
+[diffNames,ia] = setdiff(namesA, namesB);
+diffFiles = aaa(ia);
 
-% --- select files to concatenate
-if isstring(diffNames), diffNames = cellstr(diffNames); end
+% --- select files to group
+if isstring(diffNames)
+    diffNames = cellstr(diffNames); 
+end
 
-disp('Select epoch files to concatenate...')
-[indx, tf] = listdlg('ListString', diffNames, ...
-                     'PromptString', 'Select epoch files to concatenate:', ...
-                     'SelectionMode', 'multiple', ...
-                     'ListSize',[300 300]);
-commandwindow;
-if ~tf
-    error('No file(s) selected.');
-else
-    newEpochs = aaa(indx);
+if ~isempty(diffNames)
+    disp('Select epoch files to group together...')
+    [indx, tf] = listdlg('ListString', diffNames, ...
+                         'PromptString', 'Select epoch files to concatenate:', ...
+                         'SelectionMode', 'multiple', ...
+                         'ListSize',[300 300]);
+    commandwindow;
+    if ~tf
+        error('No file(s) selected.');
+    else
+        newEpochs = diffFiles(indx);
+    end
 end
 
 % --- check most recent session is populated. If not, then populate.
 existingSessions = cellfun(@(x) str2double(extractAfter(x,'_sess')), {bbb.name});
-if isempty(existingSessions);
+if isempty(existingSessions)
     startSess = 0;
 else
     startSess = max(existingSessions);
@@ -114,7 +133,8 @@ else
     end
 end
 
-newRecordingDates = cellfun(@(x) extractBetween(x, '_','_'), {newEpochs.name});
+% newRecordingDates = cellfun(@(x) extractBetween(x, '_','_'), {newEpochs.name});
+newRecordingDates = cellfun(@(s) regexp(s,'_(.*?)_','tokens','once'), {newEpochs.name});
 uniqueRecordingDates = unique(newRecordingDates);
 animal = unique(cellfun(@(x) extractBefore(x, '_'), {newEpochs.name}, 'UniformOutput', false));
 
@@ -125,7 +145,7 @@ if numel(existingSessions) ~= max(existingSessions)
         fprintf('\tSession %i is missing.\n', missingSessions(n));
     end
 else
-    fprintf('\t%i sessions exist. Merging %i epochs into %i session(s).\n', ...
+    fprintf('\t%i sessions exist. Merging %i epochs into %i session.\n', ...
         numel(existingSessions),numel(newEpochs),numel(uniqueRecordingDates));
 end
 
@@ -158,14 +178,20 @@ cd(newDir)
 subSess = dir('M*');
 [~,name,~] = fileparts(newDir);
 
-% --- WIP
-% if ~isempty(dir('*sess*'))
-%    fprintf(2,'You are in the animal directory, not the session directory! Stopping concatenation.\n');
-%    return;
-% end
+if ~isempty(dir('*sess*'))
+    if ~isempty(dir('*.dat'))
+        fprintf(2,'Data already concatenated! Stopping concatenation.\n');
+    else
+        fprintf(2,'You are in the animal directory, not the session directory! Stopping concatenation.\n');
+    end
+    return;
+end
 
 if size(subSess,1)>=1
-    if ~exist(strcat(name,'.xml'))
+    if size(subSess,1)==1
+        fprintf(2,'No sub-sessions for today! Copying -dat and -xml files parent directory and renaming to match.\n');
+    end
+    if ~exist(strcat(name,'.xml'),'file')
         delete(strcat(name,'.xml'));% bring xml file
         copyfile(strcat(animalDir,'\global.xml'),strcat(name,'.xml'),'f');
     end
@@ -180,11 +206,13 @@ if size(subSess,1)>=1
     catch
         warning('it seems that CellExplorer is not on your path');
     end
-else
-    fprintf(2,'No sub-sessions for today! Re-naming -dat and -xml files to match parent directory.')
 end    
+%% (3) extract session info
+[sessionInfo] = bz_getSessionInfo(pwd, 'noPrompts', true); 
+sessionInfo.rates.lfp = 1250;  
+save(strcat(sessionInfo.session.name,'.sessionInfo.mat'),'sessionInfo');
 
-%% (3) Extract -ppd files (python) --> WIP
+%% (4) Extract -ppd files (python) --> WIP
 haveSessions = dir('*sess*');
 haveSessions = any(isfolder({haveSessions.name}));
 
@@ -210,7 +238,7 @@ end
 
 pyrunfile(pyscript,'inputFromMatlab',pwd);
 
-%% (4) Spike sorting (matlab: kilosort3 | python: kilosort 4) --> WIP
+%% (5) Spike sorting (matlab: kilosort3 | python: kilosort 4) --> WIP
 subSess = dir();
 if size(subSess,1)>=5
     if forcesort || isempty(dir('*Kilosort*')) % if not kilosorted yet
@@ -231,14 +259,10 @@ if size(subSess,1)>=5
     end
 end
 
-%% (5) Synchronize and concatenate -ppd files
+%% (6) Synchronize and concatenate -ppd files
 byl_syncPhotomData(pwd);
 byl_concatPhotomData(pwd);
 % --- to-do: pass string list to rename epochs
-%% (6) extract session info
-[sessionInfo] = bz_getSessionInfo(pwd, 'noPrompts', true); 
-sessionInfo.rates.lfp = 1250;  
-save(strcat(sessionInfo.session.name,'.sessionInfo.mat'),'sessionInfo');
 
 %% (7) extract behavioral data and tracking
 getPatchTracking('basePath',pwd)
@@ -259,29 +283,39 @@ end
 % badChannels = [20:38]; %N11   
 % badChannels = [74]; %N14
 % badChannels = [0:3 15:18 21:30 41 43 46 47 50 52 95 97]; %N15
-badChannels = [42 48 56:59 61 70 72]; %N17
+% badChannels = [42 48 56:59 61 70 72]; %N17
 % badChannels = [1,2,4:14,74,82,83,91,92,112:118,120:126]; %N18
-
+badChannels = [1,2,3,4,5,6,8,9,10,11,12,13,...
+    14,31,32,33,34,35,36,37,38,39,40,41,42,...
+    43,44,45,46,47,74,80,81,82,83,84,85,86,...
+    87,88,89,90,91,92,93,94,95,96,97,99,100,...
+    101,102,103,104,105,106,107,108,109,110,111,...
+    112,113,114,115,116,117,118,120,121,122,123,...
+    124,125,126,127]; % M008
 
 SleepScoreMaster(pwd,'rejectChannels',badChannels); % try to sleep score
 
-%% (10) extract ripples, ripple stats, and burst metrics
+%% (10) extract ripples
 % Dictionary 
 %   - N11 : 
 %   - N17 :     pyrCh 121   noiseCh 111
 %   - N18 :     pyrCh 56   noiseCh 64
 %   - N19 :     
-pyrCh = 71; 
-noiseCh = 79;
+pyrCh = 64; 
+noiseCh = 71;
 % pyrCh = ripples.detectorinfo.detectionchannel;  %75 for n11 115 67 for n11
 % noiseCh = ripples.detectorinfo.noisechannel;
+SleepStateFile = dir("*SleepState.states.mat");
+load(SleepStateFile.name);
 [ripples] = bz_FindRipples(pwd,pyrCh,'noise',noiseCh, ...
                                      'savemat',true, ...
                                      'durations',[30 200], ...
                                      'passband',[130 250], ...
-                                     'thresholds',[2 5]);%, ...
-                                     % 'restrict',SleepState.ints.NREMstate);
-
+                                     'thresholds',[2 5], ...
+                                     'restrict',SleepState.ints.NREMstate);
+%% (11) ripple stats and burst metrics
+rippleFile = dir("*ripples.events.mat");
+load(rippleFile.name);
 % --- get ripple stats                                     
 pyrCh = bz_GetLFP(ripples.detectorinfo.detectionchannel);
 ripLFP = bz_Filter(pyrCh.data,'passband',ripples.detectorinfo.detectionparms.passband);
