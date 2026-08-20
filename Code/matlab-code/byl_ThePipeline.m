@@ -1,4 +1,4 @@
-%% ThePipeline
+% ThePipeline
 % This is the skeleton code for running the preprocessing and essential
 % data analysis steps for the DA-tagging project. There are 4 data types:
 % (1) ephys, (2) fiber-photometry, (3) behavioral tracking, and (4)

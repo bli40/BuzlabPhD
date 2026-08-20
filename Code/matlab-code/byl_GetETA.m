@@ -30,17 +30,6 @@ function eta = byl_getETA(events, data, timestamps, varargin)
 %
 % OUTPUT
 %
-%    ripples        buzcode format .event. struct with the following fields
-%                   .timestamps        Nx2 matrix of start/stop times for
-%                                      each ripple
-%                   .detectorName      string ID for detector function used
-%                   .peaks             Nx1 matrix of peak power timestamps 
-%                   .stdev             standard dev used as threshold
-%                   .noise             candidate ripples that were
-%                                      identified as noise and removed
-%                   .peakNormedPower   Nx1 matrix of peak power values
-%                   .detectorParams    struct with input parameters given
-%                                      to the detector
 % SEE ALSO
 %
 %       ...

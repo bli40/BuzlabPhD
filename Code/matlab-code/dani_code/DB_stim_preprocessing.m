@@ -16,7 +16,7 @@ optogenetics.timestamps = digiOn/sessionInfo.rates.wideband;
 optogenetics.timestamps(1:numel(digiOn),2) = digiOff/sessionInfo.rates.wideband;
 optogenetics.center = optogenetics.timestamps(:,1) + (optogenetics.timestamps(:,2) - optogenetics.timestamps(:,1))/2;
 optogenetics.duration = optogenetics.timestamps(:,2) - optogenetics.timestamps(:,1);
-optogenetics.intensity = [3100, 3200, 3350, 3600, 3800];
+optogenetics.intensity = [750 750 750 1050 1050 1050 1350 1350 1350];
 save([basepath filesep name '.optogenetics.events.mat'],'optogenetics');
 
 
