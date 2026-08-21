@@ -26,12 +26,14 @@ disp('session files, sleep scoring, ripple files, and opto files loaded.')
 %% Load LFP and bandpass filter
 [~,basename,~] = fileparts(pwd);
 pyrCh = ripples.detectorinfo.detectionchannel;
-pyrLFP = bz_GetLFP(pyrCh,'fromDat',true,'basename',basename);
+pyrLFP = bz_GetLFP(pyrCh,'fromDat',false,'basename',basename);
 
+disp('filtering...')
 fs = pyrLFP.samplingRate;
-fr = [30 100];
+fr = [130 230];
 [b,a] = butter(2,fr/(fs/2));
 bpLFP = filtfilt(b,a,double(pyrLFP.data));
+disp('done.')
 %% Induced Response
 [wt,f] = cwt(double(pyrLFP.data), pyrLFP.samplingRate,'FrequencyLimits',[0.1 300]);
 %% Evoked Response
@@ -58,7 +60,7 @@ stimGroup = stimGroup(keep);
 stimGroup = reshape(stimGroup,3,3); % duration x intensity matrix
 
 % --- event-triggered averages
-data = bpLFP;
+data = pyrLFP.data;
 timestamps = pyrLFP.timestamps;
 for d = 1:numel(durations)
     for i = 1:numel(intensities)
@@ -66,7 +68,12 @@ for d = 1:numel(durations)
                               data, ...
                               timestamps, ...
                               'durations',time_window, ...
-                              'frequency',pyrLFP.samplingRate);
+                              'samplerate',pyrLFP.samplingRate);
+        baselines{d,i} = byl_GetETA(optogenetics.timestamps(stimGroup{d,i},1), ...
+                              data, ...
+                              timestamps, ...
+                              'durations',[-.5 -.2], ...
+                              'samplerate',pyrLFP.samplingRate);
     end
 end
 
@@ -110,24 +117,155 @@ allETA = byl_GetETA(optogenetics.timestamps(:,1), pyrLFP.data, pyrLFP.timestamps
 
 %% wavelets
 close all;
+fr = [1 300];
+clear tp bslpwr bslmean dbcorr_tp ip dbcorr_ip dbcorr_ep phang_tp
 for i = 1:size(eta,2)
     for d = 1:size(eta,1)
+        wt = cwt(eta{d,i}.avg,'amor',pyrLFP.samplingRate,'FrequencyLimits',fr);
+        bl = cwt(baselines{d,i}.avg,'amor',pyrLFP.samplingRate,'FrequencyLimits',fr);
+        blp = mean(abs(bl).^2,2);
+        wtp = abs(wt).^2;
+        erpp = 10*log10(wtp./blp);
+
         for n = 1:size(eta{d,i}.chunks,1)
-            [wt,f] = cwt(eta{d,i}.chunks(n,:),'Amor',pyrLFP.samplingRate,'FrequencyLimits',[50 250]);
-            psd(n,:) = mean(abs(wt),2);
+            % --- total baseline power
+            [bwt,f] = cwt(baselines{d,i}.chunks(n,:),'amor',pyrLFP.samplingRate,'FrequencyLimits',fr);
+            bslpwr(:,:,n) = abs(bwt).^2;
+            bslmean(:,n) = mean(bslpwr(:,:,n),2);
+
+            % --- total power
+            [wt,f] = cwt(eta{d,i}.chunks(n,:),'amor',pyrLFP.samplingRate,'FrequencyLimits',fr);
+            tp(:,:,n) = abs(wt).^2;
+            dbcorr_tp(:,:,n) = 10*log10(tp(:,:,n)./bslmean(:,n));
+
+            % --- non-phase locked (induced) power
+            npwf = eta{d,i}.chunks(n,:) - eta{d,i}.avg;
+            [iwt, f] = cwt(baselines{d,i}.chunks(n,:),'amor',pyrLFP.samplingRate,'FrequencyLimits',fr);
+            ip(:,:,n) = abs(iwt).^2;
+            dbcorr_ip(:,:,n) = 10*log10(ip(:,:,n)./bslmean(:,n));
+
+            % --- phase locked (evoked) power
+            dbcorr_ep(:,:,n) = dbcorr_tp(:,:,n) - dbcorr_ip(:,:,n);
+
+            % --- phase angles
+            phang_tp(:,:,n) = angle(wt);
+            phang_bl(:,:,n) = angle(bwt);
         end
 
+        figure(3*(i-1)+d);
+        tt = tiledlayout(3,5,'TileSpacing','compact','Padding','compact');
+        title(tt,sprintf('%i ms pulse @ %i',durations(d),intensities(i)), ...
+            'Color','b','FontSize',20,'FontWeight','bold');
+        colormap(turbo)
 
-        % [wt,f] = cwt(eta{d,i}.avg,"Amor",20000,'FrequencyLimits',[50  250]);
-        % ax = axes(figure);
-        % surf(ax,eta{d,i}.window,f,abs(wt),EdgeColor="none");
-        % view(ax,[0,90])
+        % --- total power
+        nt1 = nexttile(1);
+        pcolor(1000*eta{d,i}.window,f,mean(tp,3),EdgeColor="none");
+        colorbar();
+        title(nt1,'total power','FontSize',14)
+        nt1.TitleHorizontalAlignment = 'left';
+        ylabel('frequency (Hz)');
+        xlabel('time (ms)')
+
+        % --- total power dB corrected
+        nt2 = nexttile(2);
+        pcolor(1000*eta{d,i}.window,f,mean(dbcorr_tp,3),EdgeColor="none");
+        colorbar();
+        title(nt2,'total power (dB corrected)','FontSize',14)
+        nt2.TitleHorizontalAlignment = 'left';
+        ylabel('frequency (Hz)');
+        xlabel('time (ms)')
+        s = gca;
+        % clim([0-(diff(round(s.CLim))/2) 0+(diff(round(s.CLim))/2)]);
+
+        % --- baseline power
+        nt3 = nexttile(11);
+        pcolor(1000*baselines{d,i}.window,f,mean(bslpwr,3),EdgeColor="none");
+        colorbar();
+        hold on; yyaxis right
+        plot(1000*baselines{d,i}.window, baselines{d,i}.avg, ...
+            'LineWidth',1.5,'Color','white')
+        title(nt3,'baseline','FontSize',14)
+        nt3.TitleHorizontalAlignment = 'left';
+        ylabel('frequency (Hz)');
+        xlabel('time (ms)')
+
+        % --- ERP power
+        nt4 = nexttile(6);
+        pcolor(1000*eta{d,i}.window,f,wtp,EdgeColor="none");
+        colorbar();
+        hold on; yyaxis right
+        plot(1000*eta{d,i}.window, eta{d,i}.avg, ...
+            'LineWidth',1.5,'Color','white')
+        title(nt4,'ERP power','FontSize',14)
+        nt4.TitleHorizontalAlignment = 'left';
+        ylabel('frequency (Hz)');
+        xlabel('time (ms)')
+
+        % --- ERP power dB corrected
+        nt5 = nexttile(7);
+        pcolor(1000*eta{d,i}.window,f,erpp,EdgeColor="none");
+        colorbar();
+        title(nt5,'ERP power (dB corrected)','FontSize',14)
+        nt5.TitleHorizontalAlignment = 'left';
+        ylabel('frequency (Hz)');
+        xlabel('time (ms)')
+        s = gca;
+        % clim([0-(diff(round(s.CLim))/2) 0+(diff(round(s.CLim))/2)]);
+
+        % --- non-phase locked power (induced)
+        nt6 = nexttile(3);
+        pcolor(1000*eta{d,i}.window,f,mean(dbcorr_ip,3),EdgeColor="none");
+        colorbar();
+        title(nt6,'induced power (npl)','FontSize',14)
+        nt6.TitleHorizontalAlignment = 'left';
+        ylabel('frequency (Hz)');
+        xlabel('time (ms)')
+        s = gca;
+        % clim([0-(diff(round(s.CLim))/2) 0+(diff(round(s.CLim))/2)]);
+
+        % --- phase locked power (evoked)
+        nt7 = nexttile(8);
+        pcolor(1000*eta{d,i}.window,f,mean(dbcorr_ep,3),EdgeColor="none");
+        colorbar();
+        title(nt7,'evoked power (pl)','FontSize',14)
+        nt7.TitleHorizontalAlignment = 'left';
+        ylabel('frequency (Hz)');
+        xlabel('time (ms)')
+        s = gca;
+        % clim([0-(diff(round(s.CLim))/2) 0+(diff(round(s.CLim))/2)]);
+
+        % --- baseline inter-trial phase coherence
+        nt8 = nexttile(12);
+        itpc_bl = abs(mean(exp(1i*phang_bl),3));
+        pcolor(1000*eta{d,i}.window,f,itpc_bl,EdgeColor="none");
+        colorbar();
+        title(nt8,'baseline ITPC','FontSize',14)
+        nt8.TitleHorizontalAlignment = 'left';
+        ylabel('frequency (Hz)');
+        xlabel('time (ms)')
+        s = gca;
+        % clim([0-(diff(round(s.CLim))/2) 0+(diff(round(s.CLim))/2)]);
+
+        % --- inter-trial phase coherence
+        nt9 = nexttile(13);
+        itpc_tp = abs(mean(exp(1i*phang_tp),3));
+        pcolor(1000*eta{d,i}.window,f,itpc_tp-itpc_bl,EdgeColor="none");
+        colorbar();
+        title(nt9,'ITPC (baseline subtracted)','FontSize',14)
+        nt9.TitleHorizontalAlignment = 'left';
+        ylabel('frequency (Hz)');
+        xlabel('time (ms)')
+        s = gca;
+        % clim([0-(diff(round(s.CLim))/2) 0+(diff(round(s.CLim))/2)]);
+
         % pause
-        % bz_eventWavelet(pyrLFP, optogenetics.timestamps(stimGroup{d,i},1),'tsmth',0);
+        % bz_eventWavelet(pyrLFP, optogenetics.timestamps(stimGroup{d,i},1), ...
+        %     'samplingRate',pyrLFP.samplingRate,'twin',[.1 .1],'ncyc',5,'frange',[1 350]);
     end
 end
 
-plot(f,mean(psd))
+% plot(f,mean(psd))
 %% power spectrum 
 figure(3); clf; hold on;
 for i = 1:size(eta,2)

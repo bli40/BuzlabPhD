@@ -23,7 +23,7 @@ function eta = byl_getETA(events, data, timestamps, varargin)
 %    -------------------------------------------------------------------------
 %     'durations'   time window before and after event, in seconds
 %                   (default = [-5 5]). 
-%     'frequency'   sampling rate (in Hz) (default = 1250Hz)
+%     'samplerate'   sampling rate (in Hz) (default = 1250Hz)
 %     'show'        plot results (default = 'off')
 %     'plotType'   1=original version (several plots); 2=only raw lfp
 %    =========================================================================
@@ -45,7 +45,7 @@ end
 % --- Default values ---
 p = inputParser;
 addParameter(p,'durations',[-5 5],@isnumeric)
-addParameter(p,'frequency',1250,@isnumeric)
+addParameter(p,'samplerate',1250,@isnumeric)
 addParameter(p,'show','off',@isstr)
 addParameter(p,'normalization','none',@isstr)
 parse(p,varargin{:})
@@ -55,12 +55,12 @@ events = events;
 xSeries = data;
 tSeries = timestamps;
 durations = p.Results.durations;
-frequency = p.Results.frequency;
+sr = p.Results.samplerate;
 show = p.Results.show;
 norm = p.Results.normalization;
 
 % --- Parameters ---
-fs = frequency;           % LFP sampling rate (Hz)
+fs = sr;           % LFP sampling rate (Hz)
 pre  = durations(1);      % seconds before spike
 post = durations(2);      % seconds after spike
 
