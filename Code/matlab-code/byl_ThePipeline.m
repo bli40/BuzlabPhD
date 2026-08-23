@@ -35,8 +35,8 @@
 %% (0) Global Settings Variables + Initiation
 clear all; close all;
 % --- cd to local animal directory
-cd('C:\Users\brian\Documents\BYL\project-dopamine-tagging\M016\');
-% cd('C:\Users\brian\Documents\BYL\project-opto-ripples\M008\')
+% cd('C:\Users\brian\Documents\BYL\project-dopamine-tagging\M016\');
+cd('C:\Users\brian\Documents\BYL\project-opto-ripples\M008\')
 % --- global variables
 overwrite = false;
 forcesort = false;
@@ -207,12 +207,9 @@ if size(subSess,1)>=1
         warning('it seems that CellExplorer is not on your path');
     end
 end    
-%% (3) extract session info
-[sessionInfo] = bz_getSessionInfo(pwd, 'noPrompts', true); 
-sessionInfo.rates.lfp = 1250;  
-save(strcat(sessionInfo.session.name,'.sessionInfo.mat'),'sessionInfo');
 
-%% (4) Extract -ppd files (python) --> WIP
+
+%% (3) Extract -ppd files (python) --> WIP
 haveSessions = dir('*sess*');
 haveSessions = any(isfolder({haveSessions.name}));
 
@@ -238,7 +235,7 @@ end
 
 pyrunfile(pyscript,'inputFromMatlab',pwd);
 
-%% (5) Spike sorting (matlab: kilosort3 | python: kilosort 4) --> WIP
+%% (4) Spike sorting (matlab: kilosort3 | python: kilosort 4) --> WIP
 subSess = dir();
 if size(subSess,1)>=5
     if forcesort || isempty(dir('*Kilosort*')) % if not kilosorted yet
@@ -259,15 +256,15 @@ if size(subSess,1)>=5
     end
 end
 
-%% (6) Synchronize and concatenate -ppd files
+%% (5) Synchronize and concatenate -ppd files
 byl_syncPhotomData(pwd);
 byl_concatPhotomData(pwd);
 % --- to-do: pass string list to rename epochs
 
-%% (7) extract behavioral data and tracking
+%% (6) extract behavioral data and tracking
 getPatchTracking('basePath',pwd)
 
-%% (8) extract LFP
+%% (7) extract LFP
 if isempty(dir('*.lfp'))
     try 
         bz_LFPfromDat(pwd,'outFs',1250); % generating lfp
@@ -277,7 +274,7 @@ if isempty(dir('*.lfp'))
             sessionInfo.nChannels,1,sessionInfo.rates.wideband/sessionInfo.rates.lfp);
     end
 end
-%% (9) extract Sleep State Scoring
+%% (8) extract Sleep State Scoring
 % badChannels = [24:38 48:63]; %N7
 % badChannels = [0:3 15:18 21:30 43 50 95 97]; %N9
 % badChannels = [20:38]; %N11   
@@ -295,7 +292,7 @@ badChannels = [1,2,3,4,5,6,8,9,10,11,12,13,...
 
 SleepScoreMaster(pwd,'rejectChannels',badChannels); % try to sleep score
 
-%% (10) extract ripples
+%% (9) extract ripples
 % Dictionary 
 %   - N11 : 
 %   - N17 :     pyrCh 121   noiseCh 111
@@ -310,9 +307,15 @@ load(SleepStateFile.name);
 [ripples] = bz_FindRipples(pwd,pyrCh,'noise',noiseCh, ...
                                      'savemat',true, ...
                                      'durations',[30 200], ...
-                                     'passband',[130 250], ...
+                                     'passband',[100 250], ...
                                      'thresholds',[2 5], ...
                                      'restrict',SleepState.ints.NREMstate);
+
+%% (10) extract session info
+[sessionInfo] = bz_getSessionInfo(pwd, 'noPrompts', true); 
+sessionInfo.rates.lfp = 1250;  
+save(strcat(sessionInfo.session.name,'.sessionInfo.mat'),'sessionInfo');
+
 %% (11) ripple stats and burst metrics
 rippleFile = dir("*ripples.events.mat");
 load(rippleFile.name);

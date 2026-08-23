@@ -8,7 +8,7 @@ clear all;
 close all;
 
 %% Load Data CSV
-subepoch = 2;
+subepoch = 1;
 lw = 1;
 
 EI_file = dir("*_0000.csv");
@@ -34,7 +34,7 @@ nt1.TitleHorizontalAlignment = 'left';
 xticklabels('');
 ylabel("CMOS Intensity");
 
-% EI_1 = plot(EI.Time, EI.ROI01, 'LineWidth',1,'Color',col(7,:));
+i1 = plot(EI.Time, EI.ROI01, 'LineWidth',lw,'Color',col(6,:));
 g1 = plot(E1.Time, E1.ROI01,'-','LineWidth',lw,'Color',col(5,:));
 r1 = plot(E2.Time, E2.ROI01,'-', 'LineWidth',lw,'Color',col(2,:));
 
@@ -47,7 +47,7 @@ xticklabels('');
 
 ylabel("CMOS Intensity");
 
-% EI_1 = plot(EI.Time, EI.ROI01, 'LineWidth',1,'Color',col(7,:));
+i2 = plot(EI.Time, EI.ROI01, 'LineWidth',lw,'Color',col(6,:));
 g2 = plot(E1.Time, E1.ROI02,'-','LineWidth',lw,'Color',col(5,:));
 r2 = plot(E2.Time, E2.ROI02,'-', 'LineWidth',lw,'Color',col(2,:));
 
@@ -58,7 +58,7 @@ nt3.TitleHorizontalAlignment = 'left';
 xlabel("time (s)");
 ylabel("CMOS Intensity");
 
-% EI_1 = plot(EI.Time, EI.ROI01, 'LineWidth',1,'Color',col(7,:));
+i3 = plot(EI.Time, EI.ROI01, 'LineWidth',lw,'Color',col(6,:));
 g3 = plot(E1.Time, E1.ROI03,'-','LineWidth',lw,'Color',col(5,:));
 r3 = plot(E2.Time, E2.ROI03,'-', 'LineWidth',lw,'Color',col(2,:));
 
@@ -70,21 +70,28 @@ fc = 10;
 
 g1dn = filtfilt(b,a,E1.ROI01);
 r1dn = filtfilt(b,a,E2.ROI01);
+i1dn = filtfilt(b,a,EI.ROI01);
+
 
 g2dn = filtfilt(b,a,E1.ROI02);
 r2dn = filtfilt(b,a,E2.ROI02);
+i2dn = filtfilt(b,a,EI.ROI02);
 
 g3dn = filtfilt(b,a,E1.ROI03);
 r3dn = filtfilt(b,a,E2.ROI03);
+i3dn = filtfilt(b,a,EI.ROI03);
 
 g1.YData = g1dn;
 r1.YData = r1dn;
+i1.YData = i1dn;
 
 g2.YData = g2dn;
 r2.YData = r2dn;
+i2.YData = i2dn;
 
 g3.YData = g3dn;
 r3.YData = r3dn;
+i3.YData = i3dn;
 
 drawnow;
 %% Photobleaching Correction
@@ -94,101 +101,252 @@ title(t2, 'Double Exponential Fit Output')
 
 nexttile(1); hold on;
 % --- double exponential fit for green ROI1
-g1fit = fit(E1.Time, g1dn, 'exp2');
-coeffs = coeffvalues(g1fit);
+g1fit1 = fit(E1.Time, g1dn, 'exp2');
+coeffs = coeffvalues(g1fit1);
 a = coeffs(1); b = coeffs(2); c = coeffs(3); d = coeffs(4); 
-g1e = plot(g1fit,E1.Time, g1dn);
+g1e = plot(g1fit1,E1.Time, g1dn);
 g1e(1).Color = col(5,:);
 g1e(1).MarkerSize = 5;
 g1e(2).Color = col(4,:);
 
 % --- double exponential fit for red ROI1
-r1fit = fit(E2.Time, r1dn, 'exp2');
-coeffs = coeffvalues(r1fit);
+r1fit1 = fit(E2.Time, r1dn, 'exp2');
+coeffs = coeffvalues(r1fit1);
 a = coeffs(1); b = coeffs(2); c = coeffs(3); d = coeffs(4);
-r1e = plot(r1fit,E2.Time, r1dn);
+r1e = plot(r1fit1,E2.Time, r1dn);
 r1e(1).Color = col(2,:);
 r1e(1).MarkerSize = 5;
-r1e(2).Color = col(7,:);
+r1e(2).Color = col(1,:);
+
+% --- double exponential fit for iso ROI1
+i1fit1 = fit(EI.Time, i1dn, 'exp2');
+coeffs = coeffvalues(i1fit1);
+a = coeffs(1); b = coeffs(2); c = coeffs(3); d = coeffs(4);
+i1e = plot(i1fit1,EI.Time, i1dn);
+i1e(1).Color = col(6,:);
+i1e(1).MarkerSize = 5;
+i1e(2).Color = col(3,:);
 
 nexttile(2); hold on;
-% --- double exponential fit for green ROI1
-g2fit = fit(E1.Time, g2dn, 'exp2');
-coeffs = coeffvalues(g2fit);
+% --- double exponential fit for green ROI2
+g2fit1 = fit(E1.Time, g2dn, 'exp2');
+coeffs = coeffvalues(g2fit1);
 a = coeffs(1); b = coeffs(2); c = coeffs(3); d = coeffs(4);
-g2e = plot(g2fit,E1.Time, g2dn);
+g2e = plot(g2fit1,E1.Time, g2dn);
 g2e(1).Color = col(5,:);
 g2e(1).MarkerSize = 5;
 g2e(2).Color = col(4,:);
 
-% --- double exponential fit for red ROI1
-r2fit = fit(E2.Time, r2dn, 'exp2');
-coeffs = coeffvalues(r2fit);
+% --- double exponential fit for red ROI2
+r2fit1 = fit(E2.Time, r2dn, 'exp2');
+coeffs = coeffvalues(r2fit1);
 a = coeffs(1); b = coeffs(2); c = coeffs(3); d = coeffs(4);
-r2e = plot(r2fit,E2.Time, r2dn);
+r2e = plot(r2fit1,E2.Time, r2dn);
 r2e(1).Color = col(2,:);
 r2e(1).MarkerSize = 5;
-r2e(2).Color = col(7,:);
+r2e(2).Color = col(1,:);
+
+% --- double exponential fit for iso ROI2
+i2fit1 = fit(EI.Time, i2dn, 'exp2');
+coeffs = coeffvalues(i2fit1);
+a = coeffs(1); b = coeffs(2); c = coeffs(3); d = coeffs(4);
+i2e = plot(i2fit1,EI.Time, i2dn);
+i2e(1).Color = col(6,:);
+i2e(1).MarkerSize = 5;
+i2e(2).Color = col(3,:);
 
 nexttile(3); hold on;
-% --- double exponential fit for green ROI1
-g3fit = fit(E1.Time, g3dn, 'exp2');
-coeffs = coeffvalues(g3fit);
+% --- double exponential fit for green ROI3
+g3fit1 = fit(E1.Time, g3dn, 'exp2');
+coeffs = coeffvalues(g3fit1);
 a = coeffs(1); b = coeffs(2); c = coeffs(3); d = coeffs(4);
-g3e = plot(g3fit,E1.Time, g3dn);
+g3e = plot(g3fit1,E1.Time, g3dn);
 g3e(1).Color = col(5,:);
 g3e(1).MarkerSize = 5;
 g3e(2).Color = col(4,:);
 
-% --- double exponential fit for red ROI1
-r3fit = fit(E2.Time, r3dn, 'exp2');
-coeffs = coeffvalues(r3fit);
+% --- double exponential fit for red ROI3
+r3fit1 = fit(E2.Time, r3dn, 'exp2');
+coeffs = coeffvalues(r3fit1);
 a = coeffs(1); b = coeffs(2); c = coeffs(3); d = coeffs(4);
-r3e = plot(r3fit,E2.Time, r3dn);
+r3e = plot(r3fit1,E2.Time, r3dn);
 r3e(1).Color = col(2,:);
 r3e(1).MarkerSize = 5;
-r3e(2).Color = col(7,:);
+r3e(2).Color = col(1,:);
+
+% --- double exponential fit for iso ROI1
+i3fit1 = fit(EI.Time, i3dn, 'exp2');
+coeffs = coeffvalues(i3fit1);
+a = coeffs(1); b = coeffs(2); c = coeffs(3); d = coeffs(4);
+i3e = plot(i3fit1,EI.Time, i3dn);
+i3e(1).Color = col(6,:);
+i3e(1).MarkerSize = 5;
+i3e(2).Color = col(3,:);
 
 % --- de-trend raw signals
 figure(1);
 tt1.String = 'Step 3: Photobleaching Correction via Double Exponential Fit';
-g1dt = g1dn - g1fit(E1.Time); 
+g1dt = g1dn - g1fit1(E1.Time); 
 g1.YData = g1dt;
 
-r1dt = r1dn - r1fit(E2.Time);
+r1dt = r1dn - r1fit1(E2.Time);
 r1.YData = r1dt;
 
-g2dt = g2dn - g2fit(E1.Time);
+i1dt = i1dn - i1fit1(EI.Time);
+i1.YData = i1dt;
+
+g2dt = g2dn - g2fit1(E1.Time);
 g2.YData = g2dt;
 
-r2dt = r2dn - r2fit(E2.Time);
+r2dt = r2dn - r2fit1(E2.Time);
 r2.YData = r2dt;
 
-g3dt = g3dn - g3fit(E1.Time);
-g3.YData = g3dn;
+i2dt = i2dn - i2fit1(EI.Time);
+i2.YData = i2dt;
 
-r3dt = r3dn - r3fit(E2.Time);
-r3.YData = r3dn;
+g3dt = g3dn - g3fit1(E1.Time);
+g3.YData = g3dt;
+
+r3dt = r3dn - r3fit1(E2.Time);
+r3.YData = r3dt;
+
+i3dt = i3dn - i3fit1(EI.Time);
+i3.YData = i3dt;
 
 %% Motion correction
+figure(3); clf; hold on;
+tt3 = tiledlayout(1,3);
+title(tt3, 'Motion Correction via Linear Regression','FontSize',17)
+
+% --- ROI 1
+nexttile(1); hold on;
+n = gca;
+n.TitleHorizontalAlignment = 'left';
+title('ROI01','FontSize',15);
+xlabel('isosbestic (415 nm)','FontSize',15,'Color',col(6,:));
+ylabel('emissions','FontSize',15);
+plot(i1dt, g1dt,'.','MarkerSize',5,'Color',col(5,:))
+plot(i1dt, r1dt,'.','MarkerSize',5,'Color',col(2,:))
+
+g1fit2 = fitlm(i1dt, g1dt);
+r1fit2 = fitlm(i1dt, r1dt);
+
+xplot = linspace(min(i1dt), max(i1dt), 200)';
+y1 = predict(g1fit2, xplot);
+y2 = predict(r1fit2, xplot);
+plot(xplot, y1, 'k-', 'LineWidth', 2,'Color',col(4,:));
+plot(xplot, y2, 'k-', 'LineWidth', 2,'Color',col(1,:));
+
+g1est = predict(g1fit2,i1dt);
+g1mc = g1dt - g1est;
+r1est = predict(r1fit2,i1dt);
+r1mc = r1dt - r1est;
+i1mc = i1dt - i1dt;
+
+% --- ROI 2
+nexttile(2); hold on;
+n = gca;
+n.TitleHorizontalAlignment = 'left';
+title('ROI02','FontSize',15);
+xlabel('isosbestic (415 nm)','FontSize',15,'Color',col(6,:));
+ylabel('emissions','FontSize',15);
+plot(i2dt, g2dt,'.','MarkerSize',5,'Color',col(5,:))
+plot(i2dt, r2dt,'.','MarkerSize',5,'Color',col(2,:))
+
+g2fit2 = fitlm(i2dt, g2dt);
+r2fit2 = fitlm(i2dt, r2dt);
+
+xplot = linspace(min(i2dt), max(i2dt), 200)';
+y1 = predict(g2fit2, xplot);
+y2 = predict(r2fit2, xplot);
+plot(xplot, y1, 'k-', 'LineWidth', 2,'Color',col(4,:));
+plot(xplot, y2, 'k-', 'LineWidth', 2,'Color',col(1,:));
+
+g2est = predict(g2fit2,i2dt);
+g2mc = g2dt - g2est;
+r2est = predict(r2fit2,i2dt);
+r2mc = r2dt - r2est;
+i2mc = i2dt - i2dt;
+
+% --- ROI 3
+nexttile(3); hold on;
+n = gca;
+n.TitleHorizontalAlignment = 'left';
+title('ROI03','FontSize',15);
+xlabel('isosbestic (415 nm)','FontSize',15,'Color',col(6,:));
+ylabel('emissions','FontSize',15);
+plot(i3dt, g3dt,'.','MarkerSize',5,'Color',col(5,:))
+plot(i3dt, r3dt,'.','MarkerSize',5,'Color',col(2,:))
+
+g3fit2 = fitlm(i3dt, g3dt);
+r3fit2 = fitlm(i3dt, r3dt);
+
+xplot = linspace(min(i3dt), max(i3dt), 200)';
+y1 = predict(g3fit2, xplot);
+y2 = predict(r3fit2, xplot);
+plot(xplot, y1, 'k-', 'LineWidth', 2,'Color',col(4,:));
+plot(xplot, y2, 'k-', 'LineWidth', 2,'Color',col(1,:));
+
+g3est = predict(g3fit2,i3dt);
+g3mc = g3dt - g3est;
+r3est = predict(r3fit2,i3dt);
+r3mc = r3dt - r3est;
+i3mc = i3dt - i3dt;
+
+
+% --- plot results
+figure(1);
+g1.YData = g1mc;
+r1.YData = r1mc;
+i1.YData = i1mc;
+
+g2.YData = g2mc;
+r2.YData = r2mc;
+i2.YData = i2mc;
+
+g3.YData = g3mc;
+r3.YData = r3mc;
+i3.YData = i3mc;
+
 
 %% Normalize signals
 tt1.String = 'Step 5: Normalize FP signal via dF/F';
 
-g1dff = 100*(g1dt./g1fit(E1.Time));
+% --- dF/F
+g1dff = 100*(g1mc./g1fit1(E1.Time));
 g1.YData = g1dff;
-r1dff = 100*(r1dt./r1fit(E2.Time));
+r1dff = 100*(r1mc./r1fit1(E2.Time));
 r1.YData = r1dff;
 ylabel(nt1, '\DeltaF / F')
 
-g2dff = 100*(g2dt./g2fit(E1.Time));
+g2dff = 100*(g2mc./g2fit1(E1.Time));
 g2.YData = g2dff;
-r2dff = 100*(r2dt./r2fit(E2.Time));
+r2dff = 100*(r2mc./r2fit1(E2.Time));
 r2.YData = r2dff;
 ylabel(nt2, '\DeltaF / F');
 
-g3dff = 100*(g3dt./g3fit(E1.Time));
+g3dff = 100*(g3mc./g3fit1(E1.Time));
 g3.YData = g3dff;
-r3dff = 100*(r3dt./r3fit(E2.Time));
+r3dff = 100*(r3mc./r3fit1(E2.Time));
 r3.YData = r3dff;
 ylabel(nt3, '\DeltaF / F');
+
+pause;
+% --- z-score
+g1z = (g1mc - mean(g1mc))./(std(g1mc));
+r1z = (r1mc - mean(r1mc))./(std(r1mc));
+g1.YData = g1z;
+r1.YData = r1z;
+ylabel(nt1, 'z-score')
+
+g2z = (g2mc - mean(g2mc))./(std(g2mc));
+r2z = (r2mc - mean(r2mc))./(std(r2mc));
+g2.YData = g2z;
+r2.YData = r2z;
+ylabel(nt2, 'z-score')
+
+g3z = (g3mc - mean(g3mc))./(std(g3mc));
+r3z = (r3mc - mean(r3mc))./(std(r3mc));
+g3.YData = g3z;
+r3.YData = r3z;
+ylabel(nt3, 'z-score')

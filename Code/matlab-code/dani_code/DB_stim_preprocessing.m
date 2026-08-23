@@ -1,3 +1,4 @@
+%% Load Digital In
 basepath = pwd;
 [digital_on,digital_off] = Process_IntanDigitalChannels([pwd,'\digitalin.dat']);
 save('digitalchannels.mat','digital_on','digital_off');
@@ -6,7 +7,7 @@ digiOn = []; digiOff = [];
 digiOn = sort(digital_on{1,14});
 digiOff = sort(digital_off{1,14});
 digiAll = sort([digiOn;digiOff]);
-%%
+%% pull optogenetics events
 sessionInfo = dir("*sessionInfo.mat");
 load(fullfile(sessionInfo.folder, sessionInfo.name));
 optogenetics = [];
@@ -17,9 +18,9 @@ optogenetics.timestamps(1:numel(digiOn),2) = digiOff/sessionInfo.rates.wideband;
 optogenetics.center = optogenetics.timestamps(:,1) + (optogenetics.timestamps(:,2) - optogenetics.timestamps(:,1))/2;
 optogenetics.duration = optogenetics.timestamps(:,2) - optogenetics.timestamps(:,1);
 optogenetics.intensity = [750 750 750 1050 1050 1050 1350 1350 1350];
-save([basepath filesep name '.optogenetics.events.mat'],'optogenetics');
+save([basepath filesep basename '.optogenetics.events.mat'],'optogenetics');
 
-
+%% eliminate artifacts +/- brief post-pulse window
 brief_pulses = optogenetics.duration < .01;
 other_pulses = ~brief_pulses;
 % Brief square pulses - cut the whole pulse duration
@@ -27,11 +28,16 @@ artifact_square = [ optogenetics.timestamps( brief_pulses, 1 )-0.00015 optogenet
 % Other - assume these are intermediate length square pulses, so cut onset and offset
 artifact_other_onset = [ optogenetics.timestamps( other_pulses, 1 )-0.00015 optogenetics.timestamps( other_pulses, 1 )+0.0008 ];
 artifact_other_offset = [optogenetics.timestamps( other_pulses, 2 )-0.00015 optogenetics.timestamps( other_pulses, 2 )+0.0008 ];
-artifact = [artifact_other_onset; artifact_other_offset; artifact_square];
+% (byl) causal limit - cut out 25 ms after stimulus onset to not
+causalwindow = [optogenetics.timestamps(:,1) optogenetics.timestamps(:,1)+0.025];
+% contaminate ripple detection for non-stim-induced events.
+artifact = [artifact_other_onset; artifact_other_offset; artifact_square; causalwindow];
 artifact = sort(artifact);
 
-
-RemoveArtifact_dat([basepath filesep name '.dat'],artifact);
+basepath = pwd;
+[~,basename,~] = fileparts(basepath);
+basename = [basename,'vCut25ms'];
+RemoveArtifact_dat([basepath filesep basename '.dat'],artifact);
 
 
 % fprintf('Smoothing artifact edges (chunked)...\n');

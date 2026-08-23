@@ -1,4 +1,4 @@
-function eta = byl_getETA(events, data, timestamps, varargin)
+function eta = byl_GetETA(events, data, timestamps, varargin)
 %byl_GetETA - Plot event-triggered averages for any waveform
 %
 %
@@ -12,10 +12,10 @@ function eta = byl_getETA(events, data, timestamps, varargin)
 %    plot the ETA in a new figure or a passed handle.
 %
 % INPUTS - note these are NOT name-value pairs... just raw values
-%    events         event timestamps (e.g. ripples.timestamps(:,1))
-%	 data   	    timeseries data from which to pull windowed segments
-%    timestamps
-%    <options>      optional list of property-value pairs (see tables below)
+%    events          event timestamps (e.g. ripples.timestamps(:,1))
+%    data            timeseries data from which to pull windowed segments
+%    timestamps      timestamps of time series data
+%    <options>       optional list of property-value pairs (see tables below)
 %
 %
 %    =========================================================================
