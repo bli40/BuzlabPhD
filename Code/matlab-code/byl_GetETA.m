@@ -1,5 +1,5 @@
-function eta = byl_GetETA(events, data, timestamps, varargin)
-%byl_GetETA - Plot event-triggered averages for any waveform
+function eta = byl_getETA(events, data, timestamps, varargin)
+%byl_getETA - Plot event-triggered averages for any waveform
 %
 %
 % USAGE

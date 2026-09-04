@@ -14,7 +14,7 @@
 %       7) extract behavioral data and tracking
 %       8) extract LFP
 %       9) extract Sleep State Scoring
-%      10) extract ripples, ripple stats, and burst metrics
+%      10) extract ripples, ripple stats, and cluster metrics
 %
 % For now, this will be a script that needs to be run on each session. You
 % must be within the animal's main directory. Future progress will include
@@ -35,11 +35,15 @@
 %% (0) Global Settings Variables + Initiation
 clear all; close all;
 % --- cd to local animal directory
-% cd('C:\Users\brian\Documents\BYL\project-dopamine-tagging\M016\');
-cd('C:\Users\brian\Documents\BYL\project-opto-ripples\M008\')
+cd('C:\Users\brian\Documents\BYL\project-dopamine-tagging\M012\');
+% cd('C:\Users\brian\Documents\BYL\project-opto-ripples\M008\')
 % --- global variables
 overwrite = false;
 forcesort = false;
+
+%% (0) basename and basepath
+basepath = pwd;
+[~,basename,~] = fileparts(basepath);
 
 %% (1) Organize to standard directory structure
 
@@ -173,10 +177,9 @@ else
 end
 
 %% (2) Concatenate -dat files
-newDir = pwd;
-cd(newDir)
+basepath = pwd;
+[~,basename,~] = fileparts(basepath);
 subSess = dir('M*');
-[~,name,~] = fileparts(newDir);
 
 if ~isempty(dir('*sess*'))
     if ~isempty(dir('*.dat'))
@@ -191,9 +194,9 @@ if size(subSess,1)>=1
     if size(subSess,1)==1
         fprintf(2,'No sub-sessions for today! Copying -dat and -xml files parent directory and renaming to match.\n');
     end
-    if ~exist(strcat(name,'.xml'),'file')
-        delete(strcat(name,'.xml'));% bring xml file
-        copyfile(strcat(animalDir,'\global.xml'),strcat(name,'.xml'),'f');
+    if ~exist(strcat(basename,'.xml'),'file')
+        delete(strcat(basename,'.xml'));% bring xml file
+        copyfile(strcat(animalDir,'\global.xml'),strcat(basename,'.xml'),'f');
     end
     % --- Concatenate sessions       
     bz_ConcatenateDats(pwd,0,1);
@@ -208,6 +211,9 @@ if size(subSess,1)>=1
     end
 end    
 
+%% (2.5) process digitalin files
+
+digitalIn = bz_getDigitalIn(pwd,'fs',session.extracellular.sr);
 
 %% (3) Extract -ppd files (python) --> WIP
 haveSessions = dir('*sess*');
@@ -235,6 +241,9 @@ end
 
 pyrunfile(pyscript,'inputFromMatlab',pwd);
 
+%% (3) preprocess fiber photometry
+byl_preprocessPhotometry(pwd,'show',true,'plottype',2,'saveMat',true);
+
 %% (4) Spike sorting (matlab: kilosort3 | python: kilosort 4) --> WIP
 subSess = dir();
 if size(subSess,1)>=5
@@ -243,7 +252,7 @@ if size(subSess,1)>=5
         KiloSortWrapper;
         kilosortFolder = dir('*Kilosort_*');
         try
-            PhyAutoClustering(strcat(kilosortFolder.folder,'\',kilosortFolder.name)); % autoclustering
+            PhyAutoClustering(strcat(kilosortFolder.folder,'\',kilosortFolder.name)); % auto-clustering
         catch err
             disp(err.message)
             warning('PhyAutoClustering not possible!!');
@@ -274,6 +283,23 @@ if isempty(dir('*.lfp'))
             sessionInfo.nChannels,1,sessionInfo.rates.wideband/sessionInfo.rates.lfp);
     end
 end
+%% (7.5) session lfp power spectrum
+figure(1); clf; hold on;
+load([basename,'.MergePoints.events.mat']);
+pyrLFP = bz_GetLFP(66,'fromDat',false,'basename',basename);
+for e = 1:size(MergePoints.timestamps_samples,1)
+    mp1 = find(pyrLFP.timestamps >= MergePoints.timestamps(e,1),1,"first");
+    mp2 = find(pyrLFP.timestamps <= MergePoints.timestamps(e,2),1,"last");
+    [pxx,f] = pspectrum(double(pyrLFP.data(mp1:mp2)),pyrLFP.samplingRate,'FrequencyLimits',[0 625]);
+    plot(f, pow2db(pxx));
+end
+params.Fs = 1250;
+params.fpass = [0 500];
+f0 = [60,120,180,240,300,360,420];
+data = double(pyrLFP.data);
+rmlnLFP = rmlinesc(data,params,[],[],f0);
+[pxx,f] = pspectrum(rmlnLFP,pyrLFP.samplingRate,'FrequencyLimits',[0 625]);
+plot(f, pow2db(pxx));
 %% (8) extract Sleep State Scoring
 % badChannels = [24:38 48:63]; %N7
 % badChannels = [0:3 15:18 21:30 43 50 95 97]; %N9
@@ -282,15 +308,21 @@ end
 % badChannels = [0:3 15:18 21:30 41 43 46 47 50 52 95 97]; %N15
 % badChannels = [42 48 56:59 61 70 72]; %N17
 % badChannels = [1,2,4:14,74,82,83,91,92,112:118,120:126]; %N18
-badChannels = [1,2,3,4,5,6,8,9,10,11,12,13,...
-    14,31,32,33,34,35,36,37,38,39,40,41,42,...
-    43,44,45,46,47,74,80,81,82,83,84,85,86,...
-    87,88,89,90,91,92,93,94,95,96,97,99,100,...
-    101,102,103,104,105,106,107,108,109,110,111,...
-    112,113,114,115,116,117,118,120,121,122,123,...
-    124,125,126,127]; % M008
+% badChannels = [1,2,3,4,5,6,8,9,10,11,12,13,...
+%     14,31,32,33,34,35,36,37,38,39,40,41,42,...
+%     43,44,45,46,47,74,80,81,82,83,84,85,86,...
+%     87,88,89,90,91,92,93,94,95,96,97,99,100,...q21
+%     112,113,114,115,116,117,118,120,121,122,123,...
+%     124,125,126,127]; % M008
+% badChannels = [26,27,37,38,39,40,44,45,46,47,48,49, ...
+%                50,52,53,54,55,56,57,58,59,60,61,62, ...
+%                63,64,65,77,78,79,80,82,83,84,85,86, ...
+%                87,88,89,91,93,94,95,96,97,98,99,100, ...
+%                101,102,103,104,105,106,107,108,110,111]; % M012
 
-SleepScoreMaster(pwd,'rejectChannels',badChannels); % try to sleep score
+load([basename, '.session.mat']);
+badChannels = session.channelTags.Bad.channels;
+SleepScoreMaster(pwd,'rejectChannels',badChannels);%,'ThetaChannels',[1 31],'SWChannels',[5 8]);
 
 %% (9) extract ripples
 % Dictionary 
@@ -298,8 +330,9 @@ SleepScoreMaster(pwd,'rejectChannels',badChannels); % try to sleep score
 %   - N17 :     pyrCh 121   noiseCh 111
 %   - N18 :     pyrCh 56   noiseCh 64
 %   - N19 :     
-pyrCh = 64; 
-noiseCh = 71;
+%   - M012  :   pyrCh = 92; noiseCh = 15;
+%   - M008  :   pyrCh = 64; noiseCh = 71;    
+pyrCh = 51; noiseCh = 15;
 % pyrCh = ripples.detectorinfo.detectionchannel;  %75 for n11 115 67 for n11
 % noiseCh = ripples.detectorinfo.noisechannel;
 SleepStateFile = dir("*SleepState.states.mat");
@@ -309,14 +342,20 @@ load(SleepStateFile.name);
                                      'durations',[30 200], ...
                                      'passband',[100 250], ...
                                      'thresholds',[2 5], ...
-                                     'restrict',SleepState.ints.NREMstate);
+                                     'restrict',SleepState.ints.NREMstate, ...
+                                     'EMGThresh',0.95);
 
 %% (10) extract session info
 [sessionInfo] = bz_getSessionInfo(pwd, 'noPrompts', true); 
 sessionInfo.rates.lfp = 1250;  
 save(strcat(sessionInfo.session.name,'.sessionInfo.mat'),'sessionInfo');
 
-%% (11) ripple stats and burst metrics
+session = sessionTemplate(pwd,'showGUI',false); % 
+session.channels = 1:session.extracellular.nChannels;    
+save([session.general.name,'.session.mat'],'session','-v7.3');
+
+
+%% (11) ripple stats and cluster metrics
 rippleFile = dir("*ripples.events.mat");
 load(rippleFile.name);
 % --- get ripple stats                                     
@@ -328,11 +367,11 @@ d = dir('*ripples.events.mat');
 [~,name,~] = fileparts(d.folder);
 save(join([name,'.ripples.stats.mat']),"rippleStats");
 
-% --- find ripples - solos and bursts
+% --- find ripples - solos and clusters
 firstPass = ripples.timestamps;
 
 % Merge ripples if inter-ripple period is too short <- from bz_FindRipples
-disp(['Before ripple burst merge: ' num2str(length(firstPass)) ' events.'])
+disp(['Before ripple cluster merge: ' num2str(length(firstPass)) ' events.'])
 minInterRippleInterval = 0.150; %s;
 secondPass = [];
 id = [];
@@ -350,50 +389,50 @@ end
 
 secondPass = [secondPass ; ripple];
 if isempty(secondPass)
-	disp('Ripple burst merge failed');
+	disp('Ripple cluster merge failed');
 	return
 else
-	disp(['After ripple burst merge: ' num2str(length(secondPass)) ' events.']);
+	disp(['After ripple cluster merge: ' num2str(length(secondPass)) ' events.']);
 end
 solos = intersect(firstPass, secondPass, 'rows');
-bursts = setdiff(secondPass, firstPass, 'rows');
-ripburst = secondPass;
+clusters = setdiff(secondPass, firstPass, 'rows');
+ripclust = secondPass;
 
-% --- Ripple Burst Index and Size
-aa = ismember(ripples.timestamps, bursts);
+% --- Ripple cluster Index and Size
+aa = ismember(ripples.timestamps, clusters);
 bb = cumsum(aa);
 cc = bb(:,1) > bb(:,2);
 cc = cc + aa(:,2);
-ripBurstNum = cumsum(aa(:,1));
-ripBurstNum(~logical(cc)) = 0;
-[ripBurstIdx, ripBurstRevIdx, ripSizeAll] = deal(cc);
-for i = 1:max(unique(ripBurstNum))
-    ripBurstIdx(ripBurstNum == i) = cumsum(cc(ripBurstNum == i));
-    ripBurstRevIdx(ripBurstNum == i) = flip(cumsum(cc(ripBurstNum == i)));
-    ripSizeAll(ripBurstNum == i) = sum(cc(ripBurstNum == i));
-    burstsize(i,:) = ripSizeAll(find(ripBurstNum == i,1,'first'));
+ripClustNum = cumsum(aa(:,1));
+ripClustNum(~logical(cc)) = 0;
+[ripClustIdx, ripClustRevIdx, ripSizeAll] = deal(cc);
+for i = 1:max(unique(ripClustNum))
+    ripClustIdx(ripClustNum == i) = cumsum(cc(ripClustNum == i));
+    ripClustRevIdx(ripClustNum == i) = flip(cumsum(cc(ripClustNum == i)));
+    ripSizeAll(ripClustNum == i) = sum(cc(ripClustNum == i));
+    clustsize(i,:) = ripSizeAll(find(ripClustNum == i,1,'first'));
 end
 ripSizeAll(ripSizeAll == 0) = 1;
 
-ripBurstSize = nan(size(ripburst(:,1)));
-[~,~,isolo] = intersect(solos(:,1), ripburst(:,1));
-ripBurstSize(isolo) = 1;
-[~,ia,iburst] = intersect(bursts(:,1), ripburst(:,1));
-ripBurstSize(iburst) = burstsize(ia);
+ripClustSize = nan(size(ripclust(:,1)));
+[~,~,isolo] = intersect(solos(:,1), ripclust(:,1));
+ripClustSize(isolo) = 1;
+[~,ia,iclust] = intersect(clusters(:,1), ripclust(:,1));
+ripclustSize(iclust) = clustsize(ia);
 
 % check
-fprintf('%i/%i ripple bursts indexed\n',max(ripBurstNum),length(bursts));
+fprintf('%i/%i ripple clusters indexed\n',max(ripClustNum),length(clusters));
 
 
-% --- Ripple Burst Index and Size -> structure!
-rippleBurst = struct('ripburst',ripburst, ...
-                     'ripburstsize',ripBurstSize, ...
+% --- Ripple Clust Index and Size -> structure!
+rippleClust = struct('ripclust',ripclust, ...
+                     'ripclustsize',ripclustSize, ...
                      'solos',solos, ...
-                     'bursts',bursts, ...
-                     'burstsize',burstsize, ...
+                     'clusters',clusters, ...
+                     'clustersize',clustsize, ...
                      'ripsizeall',ripSizeAll, ...
-                     'ripburstidx',ripBurstIdx, ...
-                     'reverseidx',ripBurstRevIdx);
+                     'ripclustidx',ripClustIdx, ...
+                     'reverseidx',ripClustRevIdx);
 
 % rippleBurst = struct('solos', ripBurstIdx == 0,...
 %                      'bursts', ripBurstIdx ~= 0, ...
@@ -412,7 +451,7 @@ rippleBurst = struct('ripburst',ripburst, ...
 %                      'burstNum', burstSize, ...
 %                      'burstTimes', bursts, ...
 %                      'soloTimes', solos);
-fprintf('rippleBurst structure complete.\n');
+fprintf('rippleClust structure complete.\n');
 d = dir('*.ripples.events.mat');
 [~,name,~] = fileparts(d.folder);
-save(join([name,'.ripples.bursts.mat']),"rippleBurst");
+save(join([name,'.ripples.clusters.mat']),"rippleClust");

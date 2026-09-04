@@ -4,8 +4,8 @@
 
 % created by Brian Y. Li - 2026/08/16
 
-clear all;
-close all;
+% clear all;
+% close all;
 
 %% Load Data CSV
 subepoch = 1;
@@ -18,6 +18,12 @@ E2_file = dir("*_0002.csv");
 EI = readtable(string(EI_file(subepoch).name));
 E1 = readtable(string(E1_file(subepoch).name));
 E2 = readtable(string(E2_file(subepoch).name));
+
+% --- make all lengths the same
+chanLens = min([size(EI,1), size(E1,1), size(E2,1)]);
+EI = EI(1:chanLens,:);
+E1 = E1(1:chanLens,:);
+E2 = E2(1:chanLens,:);
 
 % --- plot ROIs and traces
 f1 = figure(1);
@@ -275,8 +281,8 @@ n.TitleHorizontalAlignment = 'left';
 title('ROI03','FontSize',15);
 xlabel('isosbestic (415 nm)','FontSize',15,'Color',col(6,:));
 ylabel('emissions','FontSize',15);
-plot(i3dt, g3dt,'.','MarkerSize',5,'Color',col(5,:))
 plot(i3dt, r3dt,'.','MarkerSize',5,'Color',col(2,:))
+plot(i3dt, g3dt,'.','MarkerSize',5,'Color',col(5,:))
 
 g3fit2 = fitlm(i3dt, g3dt);
 r3fit2 = fitlm(i3dt, r3dt);
@@ -331,7 +337,25 @@ r3dff = 100*(r3mc./r3fit1(E2.Time));
 r3.YData = r3dff;
 ylabel(nt3, '\DeltaF / F');
 
-pause;
+figure(4);
+t2 = tiledlayout(1,2,'TileSpacing','loose','Padding','loose');
+title(t2,'gDA vs rACh','FontSize',30);
+nt = nexttile(1);
+plot(g1dff, r1dff,'k.','MarkerSize',5);
+title(nt, 'ROI-1: Nucleus Accumbens','FontSize',20);
+nt.TitleHorizontalAlignment = 'left';
+xlabel('gDA3h signal','Color',col(5,:),'FontSize',20);
+ylabel('rACh1.7 signal','Color',col(2,:),'FontSize',20);
+
+nt = nexttile(2);
+plot(g3dff, r3dff,'k.','MarkerSize',5);
+title(nt, 'ROI-3: Hippocampus','FontSize',20);
+nt.TitleHorizontalAlignment = 'left';
+xlabel('gDA3h signal','Color',col(5,:),'FontSize',20);
+ylabel('rACh1.7 signal','Color',col(2,:),'FontSize',20);
+
+figure(1);
+%
 % --- z-score
 g1z = (g1mc - mean(g1mc))./(std(g1mc));
 r1z = (r1mc - mean(r1mc))./(std(r1mc));
@@ -350,3 +374,92 @@ r3z = (r3mc - mean(r3mc))./(std(r3mc));
 g3.YData = g3z;
 r3.YData = r3z;
 ylabel(nt3, 'z-score')
+
+%% 
+% --- softmax
+% g1sm = normalize(g1mc,'range');
+% r1sm = normalize(r1mc,'range');
+% g3sm = normalize(g3mc,'range');
+% r3sm = normalize(r3mc,'range');
+
+% f = figure(5);
+% t1 = tiledlayout(2,1,'TileSpacing','tight','Padding','compact');
+% tt1 = title(t1, 'Pre-Processed Fiber Photometry Data','FontSize',30);
+% col = lines(7);
+% 
+% nexttile(1); hold on; grid on;
+% g1 = plot(E1.Time, g1z,'-','LineWidth',lw,'Color',col(5,:),'DisplayName','gDA3h');
+% r1 = plot(E2.Time, r1z,'-', 'LineWidth',lw,'Color',col(2,:),'DisplayName','rACh1.7');
+% title("Nucleus Accumbens",'FontSize',20);
+% nt = gca;
+% nt.TitleHorizontalAlignment = 'left';
+% xlabel('Time (s)','FontSize',20);
+% ylabel('z-score','FontSize',20);
+% lgd = legend();
+% lgd.FontSize = 15;
+% 
+% nexttile(2); hold on; grid on;
+% g1 = plot(E1.Time, g3z,'-','LineWidth',lw,'Color',col(5,:),'DisplayName','gDA3h');
+% r1 = plot(E2.Time, r3z,'-', 'LineWidth',lw,'Color',col(2,:),'DisplayName','rACh1.7');
+% title("Hippocampus", 'FontSize',20);
+% nt = gca;
+% nt.TitleHorizontalAlignment = 'left';
+% xlabel('Time (s)','FontSize',20);
+% ylabel('z-score','FontSize',20);
+% lgd = legend();
+% lgd.FontSize = 15;
+
+%% cross-correlation
+f = figure(6);
+t1 = tiledlayout(1,2,'TileSpacing','tight','Padding','compact');
+tt1 = title(t1, 'Cross Correlation Between DA and ACh','FontSize',30);
+col = lines(7);
+
+nexttile(1); hold on; grid on;
+[r,lags] = xcorr(g1z,r1z);
+plot(lags*mean(diff(EI.Time)),r);
+title("Nucleus Accumbens",'FontSize',20);
+nt = gca;
+nt.TitleHorizontalAlignment = 'left';
+xlabel('Time (s)','FontSize',20);
+ylabel('Cross Correlation','FontSize',20);
+
+
+nexttile(2); hold on; grid on;
+[r,lags] = xcorr(g3z,r3z);
+plot(lags*mean(diff(EI.Time)),r,'LineWidth',1.5);
+title("Hippocampus", 'FontSize',20);
+nt = gca;
+nt.TitleHorizontalAlignment = 'left';
+xlabel('Time (s)','FontSize',20);
+ylabel('Cross Correlation','FontSize',20);
+
+
+%% Save Pre-Processed Data
+photometry.ROI1.name = "NAc";
+photometry.ROI1.E1dff = g1dff;
+photometry.ROI1.E2dff = r1dff;
+photometry.ROI1.E1mc = g1mc;
+photometry.ROI1.E2mc = r1mc;
+
+photometry.ROI2.name = "mPFC";
+photometry.ROI2.E1dff = g2dff;
+photometry.ROI2.E2dff = r2dff;
+photometry.ROI2.E1mc = g2mc;
+photometry.ROI2.E2mc = r2mc;
+
+photometry.ROI3.name = "dHPC";
+photometry.ROI3.E1dff = g3dff;
+photometry.ROI3.E2dff = r3dff;
+photometry.ROI3.E1mc = g3mc;
+photometry.ROI3.E2mc = r3mc;
+
+photometry.EI = i1dt;
+photometry.EI_time = EI.Time;
+photometry.E1_time = E1.Time;
+photometry.E2_time = E2.Time;
+
+basepath = pwd;
+[~, basename, ~] = fileparts(pwd);
+
+save([basepath filesep basename '.photometry.mat'],'photometry');

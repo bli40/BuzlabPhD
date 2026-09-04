@@ -1,11 +1,12 @@
 %% Load Digital In
 basepath = pwd;
+[~,basename,~] = fileparts(basepath);
 [digital_on,digital_off] = Process_IntanDigitalChannels([pwd,'\digitalin.dat']);
-save('digitalchannels.mat','digital_on','digital_off');
+% save('digitalchannels.mat','digital_on','digital_off');
 
 digiOn = []; digiOff = [];
-digiOn = sort(digital_on{1,14});
-digiOff = sort(digital_off{1,14});
+digiOn = sort(digital_on{1,16});
+digiOff = sort(digital_off{1,16});
 digiAll = sort([digiOn;digiOff]);
 %% pull optogenetics events
 sessionInfo = dir("*sessionInfo.mat");
@@ -17,8 +18,9 @@ optogenetics.timestamps = digiOn/sessionInfo.rates.wideband;
 optogenetics.timestamps(1:numel(digiOn),2) = digiOff/sessionInfo.rates.wideband;
 optogenetics.center = optogenetics.timestamps(:,1) + (optogenetics.timestamps(:,2) - optogenetics.timestamps(:,1))/2;
 optogenetics.duration = optogenetics.timestamps(:,2) - optogenetics.timestamps(:,1);
-optogenetics.intensity = [750 750 750 1050 1050 1050 1350 1350 1350];
-save([basepath filesep basename '.optogenetics.events.mat'],'optogenetics');
+optogenetics.intensity = [1350 1350 1350 1350 1350 1350 1350 1350 1350];
+% save([basepath filesep basename '.optogenetics.events.mat'],'optogenetics');
+disp('Done')
 
 %% eliminate artifacts +/- brief post-pulse window
 brief_pulses = optogenetics.duration < .01;
@@ -31,12 +33,12 @@ artifact_other_offset = [optogenetics.timestamps( other_pulses, 2 )-0.00015 opto
 % (byl) causal limit - cut out 25 ms after stimulus onset to not
 causalwindow = [optogenetics.timestamps(:,1) optogenetics.timestamps(:,1)+0.025];
 % contaminate ripple detection for non-stim-induced events.
-artifact = [artifact_other_onset; artifact_other_offset; artifact_square; causalwindow];
+artifact = [artifact_other_onset; artifact_other_offset; artifact_square];
+% artifact = [artifact_other_onset; artifact_other_offset; artifact_square; causalwindow];
+
 artifact = sort(artifact);
 
-basepath = pwd;
-[~,basename,~] = fileparts(basepath);
-basename = [basename,'vCut25ms'];
+% basename = [basename,'cut'];
 RemoveArtifact_dat([basepath filesep basename '.dat'],artifact);
 
 
