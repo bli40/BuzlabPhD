@@ -169,7 +169,7 @@ end
 %% initiate preprocessing
 if show && plotType == 1
     % --- plot ROIs and traces
-    f1 = figure(1);
+    f1 = figure(42);
     t1 = tiledlayout(3,1,'TileSpacing','tight','Padding','compact');
     tt1 = title(t1, 'Step 1: Raw Data');
     col = lines(7);
@@ -270,7 +270,7 @@ r3dt = r3dn - r3fit1(E2.Time);
 i3dt = i3dn - i3fit1(EI.Time);
 
 if show && plotType == 1
-    f2 = figure(2); clf; hold on;
+    f2 = figure(); clf; hold on;
     t2 = tiledlayout(3,1);
     title(t2, 'Double Exponential Fit Output')
     
@@ -332,7 +332,7 @@ if show && plotType == 1
     i3e(2).Color = col(3,:);
     
     % --- de-trend raw signals
-    figure(1);
+    figure(42);
     tt1.String = 'Step 3: Photobleaching Correction via Double Exponential Fit';
     g1.YData = g1dt;
     r1.YData = r1dt;
@@ -374,7 +374,7 @@ r3mc = r3dt - r3est;
 i3mc = i3dt - i3dt;
 
 if show && plotType == 1
-    figure(3); clf; hold on;
+    figure(); clf; hold on;
     tt3 = tiledlayout(1,3);
     title(tt3, 'Motion Correction via Linear Regression','FontSize',17)
     
@@ -426,7 +426,7 @@ if show && plotType == 1
     
     
     % --- plot results
-    figure(1);
+    figure(42);
     g1.YData = g1mc;
     r1.YData = r1mc;
     i1.YData = i1mc;
@@ -477,9 +477,9 @@ if show && plotType == 1
     r3.YData = r3dff;
     ylabel(nt3, '\DeltaF / F');
     
-    figure(4);
+    figure();
     t2 = tiledlayout(1,3,'TileSpacing','loose','Padding','loose');
-    title(t2,'gDA vs rACh','FontSize',30);
+    title(t2,'Green vs Red Signal','FontSize',30);
 
     nt = nexttile(1);
     plot(g1dff, r1dff,'k.','MarkerSize',5);
@@ -502,8 +502,24 @@ if show && plotType == 1
     xlabel('green signal','Color',col(5,:),'FontSize',20);
     ylabel('red signal','Color',col(2,:),'FontSize',20);
 
+    figure(); clf; hold on;
+    title('Green vs. Red Cross-Correlation','FontSize',20);
+    tiledlayout(1,3,'TileSpacing','compact','Padding','compact');
+    
+    nexttile(1);
+    [ccf,lags] = xcorr(g1dff, r1dff);
+    plot(lags,ccf,'-k','LineWidth',1.5);
+
+    nexttile(2);
+    [ccf,lags] = xcorr(g2dff, r2dff);
+    plot(lags,ccf,'-k','LineWidth',1.5);
+    
+    nexttile(3);
+    [ccf,lags] = xcorr(g3dff, r3dff);
+    plot(lags,ccf,'-k','LineWidth',1.5);
+
 elseif show && plotType == 2
-    f1 = figure(1);
+    f1 = figure(42);
     t1 = tiledlayout(3,1,'TileSpacing','tight','Padding','compact');
     tt1.String = 'Preprocessed Fiber Photometry Data';
     col = lines(7);

@@ -242,7 +242,7 @@ end
 pyrunfile(pyscript,'inputFromMatlab',pwd);
 
 %% (3) preprocess fiber photometry
-byl_preprocessPhotometry(pwd,'show',true,'plottype',1,'saveMat',true,'sync',false);
+byl_preprocessPhotometry(pwd,'show',true,'plottype',1,'saveMat',false,'sync',false);
 
 %% (4) Spike sorting (matlab: kilosort3 | python: kilosort 4) --> WIP
 subSess = dir();
