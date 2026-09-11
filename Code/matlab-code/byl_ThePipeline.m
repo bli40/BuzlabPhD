@@ -35,7 +35,7 @@
 %% (0) Global Settings Variables + Initiation
 clear all; close all;
 % --- cd to local animal directory
-cd('C:\Users\brian\Documents\BYL\project-dopamine-tagging\M012\');
+cd('C:\Users\brian\Documents\BYL\project-dopamine-tagging\M018\');
 % cd('C:\Users\brian\Documents\BYL\project-opto-ripples\M008\')
 % --- global variables
 overwrite = false;
@@ -242,7 +242,7 @@ end
 pyrunfile(pyscript,'inputFromMatlab',pwd);
 
 %% (3) preprocess fiber photometry
-byl_preprocessPhotometry(pwd,'show',true,'plottype',2,'saveMat',true);
+byl_preprocessPhotometry(pwd,'show',true,'plottype',1,'saveMat',true,'sync',false);
 
 %% (4) Spike sorting (matlab: kilosort3 | python: kilosort 4) --> WIP
 subSess = dir();
@@ -291,15 +291,46 @@ for e = 1:size(MergePoints.timestamps_samples,1)
     mp1 = find(pyrLFP.timestamps >= MergePoints.timestamps(e,1),1,"first");
     mp2 = find(pyrLFP.timestamps <= MergePoints.timestamps(e,2),1,"last");
     [pxx,f] = pspectrum(double(pyrLFP.data(mp1:mp2)),pyrLFP.samplingRate,'FrequencyLimits',[0 625]);
-    plot(f, pow2db(pxx));
+    plot(f, pow2db(pxx),':','LineWidth',2,'DisplayName',sprintf('epoch %i',e));
 end
+[pxx,f] = pspectrum(double(pyrLFP.data), pyrLFP.samplingRate,'FrequencyLimits',[0 625]);
+plot(f, pow2db(pxx),'-k','LineWidth',1.5,'DisplayName',sprintf('full sess'));
+legend('FontSize',15);
+title(sprintf('%s - epoch PSD',basename),'Interpreter','none','FontSize',15);
+xlabel('frequency (Hz)','FontSize',15);
+ylabel('power (dB)','FontSize',15);
+
+%% --- Chronux
+iters = 10;
+col = nebula(iters);
 params.Fs = 1250;
-params.fpass = [0 500];
-f0 = [60,120,180,240,300,360,420];
+params.tapers = [3 5];
+f0 = 60.*[1:2:7];
 data = double(pyrLFP.data);
-rmlnLFP = rmlinesc(data,params,[],[],f0);
-[pxx,f] = pspectrum(rmlnLFP,pyrLFP.samplingRate,'FrequencyLimits',[0 625]);
-plot(f, pow2db(pxx));
+for i = 1:iters
+    data = rmlinesmovingwinc(data,[2,1],10,params,0.05,'n',[]);
+    [px1,f] = pspectrum(data,pyrLFP.samplingRate,'FrequencyLimits',[0 625]);
+    plot(f, pow2db(px1),'-','Color',col(i,:),'LineWidth',1,'DisplayName',sprintf('rmlines iter: %i',i));
+end
+% for i = 1:iters
+%     data = rmlinesmovingwinc(data,[1,1],10,params,0.1,'n',[]);
+%     [px1,f] = pspectrum(data,pyrLFP.samplingRate,'FrequencyLimits',[0 625]);
+%     plot(f, pow2db(px1),'-','Color',col(i,:),'LineWidth',1,'DisplayName',sprintf('rmlines iter: %i',i));
+% end
+legend('FontSize',20);
+
+%% --- Zapline
+pyrLFP = bz_GetLFP('all','fromDat',false,'basename',basename);
+sr = pyrLFP.samplingRate;
+col = winter(5);
+zlp = clean_data_with_zapline_plus(double(pyrLFP.data),sr, ...
+                                   'plotResults',0);
+[px2,f] = pspectrum(zlp,pyrLFP.samplingRate,'FrequencyLimits',[0 625]);
+plot(f, pow2db(px2),'-','Color',col(i,:),'LineWidth',1,'DisplayName',sprintf('rmlines iter: %i',i));
+
+legend('FontSize',20);
+
+
 %% (8) extract Sleep State Scoring
 % badChannels = [24:38 48:63]; %N7
 % badChannels = [0:3 15:18 21:30 43 50 95 97]; %N9
@@ -319,8 +350,8 @@ plot(f, pow2db(pxx));
 %                63,64,65,77,78,79,80,82,83,84,85,86, ...
 %                87,88,89,91,93,94,95,96,97,98,99,100, ...
 %                101,102,103,104,105,106,107,108,110,111]; % M012
-
-load([basename, '.session.mat']);
+basename = 'amplifier';
+% load([basename, '.session.mat']);
 badChannels = session.channelTags.Bad.channels;
 SleepScoreMaster(pwd,'rejectChannels',badChannels);%,'ThetaChannels',[1 31],'SWChannels',[5 8]);
 

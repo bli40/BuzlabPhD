@@ -14,8 +14,10 @@ function photometry = byl_preprocessPhotometry(varargin)
 %     'source'      recording system used (default = 'rbfmc'). 
 %     'show'        plot results (default = false)
 %     'saveMat'     logical (default=false) to save in buzcode format
+%     'sync'        logical (default=false) to sync with digitalin/pulsepal
 %     'plotType'    0=off; 1=original version (several plots); 2=only
 %                   preprocessed result
+%     'epoch'       numeric for which epoch to preprocess (default=1)
 %    =========================================================================
 %
 % OUTPUT
@@ -49,6 +51,7 @@ p = inputParser;
 addParameter(p,'source','rbfmc',@isstr)
 addParameter(p,'show',false,@islogical)
 addParameter(p,'saveMat',false,@islogical)
+addParameter(p,'sync',false,@islogical)
 addParameter(p,'plotType',2,@isnumeric)
 addParameter(p,'syncDI',1,@isnumeric)
 addParameter(p,'fpCamDI',16,@isnumeric)
@@ -71,6 +74,7 @@ end
 source = p.Results.source;
 show = p.Results.show;
 saveMat = p.Results.saveMat;
+sync = p.Results.sync;
 plotType = p.Results.plotType;
 syncDI = p.Results.syncDI;
 fpCamDI = p.Results.fpCamDI;
@@ -105,7 +109,7 @@ switch source
             chanLength = cellfun(@(x) size(x,1),sessioncell);
             if numel(unique(chanLength)) ~= 1
                 fprintf(2,'\tChannel sample numbers unequal. Removing extra samples.\n')
-                minLength = min(chanLength);
+                minLength = min(chanLength(:,e));
                 for c = 1:numChannels
                     sessioncell{c,e} = sessioncell{c,e}(1:minLength,:);
                 end
@@ -126,34 +130,41 @@ E1 = sessioncell{2,1};
 E2 = sessioncell{3,1};
 
 %% Synchronize Time 
-digifile = dir("*DigitalIn.events.mat");
-
-% Load digital input events
-if ~isempty(digifile)
-    load(digifile.name, 'digitalIn');
-    fprintf('Digital input events loaded.\n');
-else
-    fprintf(2,'No digital input events file found. Running bz_getDigitalIn.\n');
-    sessionfile = dir('*session.mat');
-    load(sessionfile(1).name, 'session');
-    digitalIn = bz_getDigitalIn(basepath,'fs',session.extracellular.sr);
+if sync
+    digifile = dir("*DigitalIn.events.mat");
+    
+    % Load digital input events
+    if ~isempty(digifile)
+        load(digifile.name, 'digitalIn');
+        fprintf('Digital input events loaded.\n');
+    else
+        fprintf(2,'No digital input events file found. Running bz_getDigitalIn.\n');
+        sessionfile = dir('*session.mat');
+        if isempty(sessionfile)
+            fprintf(2,'No session-mat file in cwd. Searching one directory up.')
+            sessionfile = dir('../*session.mat');
+        end
+        load([sessionfile(1).folder,filesep,sessionfile(1).name], 'session');
+        digitalIn = bz_getDigitalIn(basepath,'fs',session.extracellular.sr);
+        fprintf('(1) or more epochs missing digitalin-dat. Synchronizing from within epoch folder.\n');
+    end
+    
+    allFpTTL = sort([EI.Time; E1.Time; E2.Time]);
+    perA = round(mean(diff(allFpTTL)),5);
+    perB = round(mean(diff(digitalIn.timestampsOn{fpCamDI})),5);
+    if perA == perB
+        fprintf('FP -> EPhys TTL durations match.\n');
+    else
+        error('FP -> EPhys TTL durations DO NOT MATCH. Check session-/global-xml sample rate.');
+    end
+    
+    tlag = digitalIn.timestampsOn{fpCamDI}(1);
+    fprintf("Applying timelag to photometry signal.\n");
+    fprintf(2,"\t%f s -> %f s\n",allFpTTL(1), tlag);
+    EI.Time = EI.Time + tlag;
+    E1.Time = E1.Time + tlag;
+    E2.Time = E2.Time + tlag;
 end
-
-allFpTTL = sort([EI.Time; E1.Time; E2.Time]);
-perA = round(mean(diff(allFpTTL)),5);
-perB = round(mean(diff(digitalIn.timestampsOn{fpCamDI})),5);
-if perA == perB
-    fprintf('FP -> EPhys TTL durations match.\n');
-else
-    error('FP -> EPhys TTL durations DO NOT MATCH. Check session-/global-xml sample rate.');
-end
-
-tlag = digitalIn.timestampsOn{fpCamDI}(1);
-fprintf("Applying timelag to photometry signal.\n");
-fprintf(2,"\t%f s -> %f s\n",allFpTTL(1), tlag);
-EI.Time = EI.Time + tlag;
-E1.Time = E1.Time + tlag;
-E2.Time = E2.Time + tlag;
 
 %% initiate preprocessing
 if show && plotType == 1
@@ -467,21 +478,29 @@ if show && plotType == 1
     ylabel(nt3, '\DeltaF / F');
     
     figure(4);
-    t2 = tiledlayout(1,2,'TileSpacing','loose','Padding','loose');
+    t2 = tiledlayout(1,3,'TileSpacing','loose','Padding','loose');
     title(t2,'gDA vs rACh','FontSize',30);
+
     nt = nexttile(1);
     plot(g1dff, r1dff,'k.','MarkerSize',5);
-    title(nt, 'ROI-1: Nucleus Accumbens','FontSize',20);
+    title(nt, 'ROI-1','FontSize',20);
     nt.TitleHorizontalAlignment = 'left';
-    xlabel('gDA3h signal','Color',col(5,:),'FontSize',20);
-    ylabel('rACh1.7 signal','Color',col(2,:),'FontSize',20);
+    xlabel('green signal','Color',col(5,:),'FontSize',20);
+    ylabel('red signal','Color',col(2,:),'FontSize',20);
     
     nt = nexttile(2);
-    plot(g3dff, r3dff,'k.','MarkerSize',5);
-    title(nt, 'ROI-3: Hippocampus','FontSize',20);
+    plot(g2dff, r2dff,'k.','MarkerSize',5);
+    title(nt, 'ROI-2','FontSize',20);
     nt.TitleHorizontalAlignment = 'left';
-    xlabel('gDA3h signal','Color',col(5,:),'FontSize',20);
-    ylabel('rACh1.7 signal','Color',col(2,:),'FontSize',20);
+    xlabel('green signal','Color',col(5,:),'FontSize',20);
+    ylabel('red signal','Color',col(2,:),'FontSize',20);
+
+    nt = nexttile(3);
+    plot(g3dff, r3dff,'k.','MarkerSize',5);
+    title(nt, 'ROI-3','FontSize',20);
+    nt.TitleHorizontalAlignment = 'left';
+    xlabel('green signal','Color',col(5,:),'FontSize',20);
+    ylabel('red signal','Color',col(2,:),'FontSize',20);
 
 elseif show && plotType == 2
     f1 = figure(1);
