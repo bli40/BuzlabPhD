@@ -11,8 +11,9 @@ function photometry = byl_preprocessPhotometry(varargin)
 %    =========================================================================
 %     Properties    Values
 %    -------------------------------------------------------------------------
-%     'source'      recording system used (default = 'rbfmc'). 
-%     'show'        plot results (default = false)
+%     'source'      recording system used (default='rbfmc'). 
+%     'numChans'    number of excitations (including isosbestic, default=3). 
+%     'show'        plot results (default=false)
 %     'saveMat'     logical (default=false) to save in buzcode format
 %     'sync'        logical (default=false) to sync with digitalin/pulsepal
 %     'plotType'    0=off; 1=original version (several plots); 2=only
@@ -49,6 +50,7 @@ warning('this function is under development and may not work... yet. currently o
 % Default values
 p = inputParser;
 addParameter(p,'source','rbfmc',@isstr)
+addParameter(p,'numChans',3,@isnumeric)
 addParameter(p,'show',false,@islogical)
 addParameter(p,'saveMat',false,@islogical)
 addParameter(p,'sync',false,@islogical)
@@ -72,6 +74,7 @@ end
 
 % assign parameters (either defaults or given)
 source = p.Results.source;
+numChannels = p.Results.numChans;
 show = p.Results.show;
 saveMat = p.Results.saveMat;
 sync = p.Results.sync;
@@ -94,7 +97,7 @@ switch source
         epochs = string(unique({tknames.epoch}));
         channels = string(unique({tknames.channel}));
         numEpochs = numel(epochs);
-        numChannels = numel(channels);
+        % numChannels = numel(channels);
         
         fprintf('\t  <strong>Epochs:</strong> %i\n\t<strong>Channels:</strong> %i\n',numEpochs,numChannels);
         
@@ -177,7 +180,7 @@ if show && plotType == 1
     
     % --- region 1
     nt1 = nexttile(1); hold on; grid on;
-    title("ROI 1 (NAc)");
+    title("ROI 1");
     nt1.TitleHorizontalAlignment = 'left';
     % xlabel("time (s)");
     xticklabels('');
@@ -189,7 +192,7 @@ if show && plotType == 1
     
     % --- region 2
     nt2 = nexttile(2); hold on; grid on;
-    title("ROI 2 (empty)");
+    title("ROI 2");
     nt2.TitleHorizontalAlignment = 'left';
     % xlabel("time (s)");
     xticklabels('');
@@ -202,7 +205,7 @@ if show && plotType == 1
     
     % --- region 3
     nt3 = nexttile(3); hold on; grid on;
-    title("ROI 3 (HPC)");
+    title("ROI 3");
     nt3.TitleHorizontalAlignment = 'left';
     xlabel("time (s)");
     ylabel("CMOS Intensity");
@@ -566,6 +569,8 @@ if saveMat
     photometry.ROI1.E2dff = r1dff;
     photometry.ROI1.E1mc = g1mc;
     photometry.ROI1.E2mc = r1mc;
+    photometry.ROI1.E1z = g1z;
+    photometry.ROI1.E2z = r1z;
     photometry.ROI1.EI = i1dt;
     
     photometry.ROI2.name = "mPFC";
@@ -573,6 +578,8 @@ if saveMat
     photometry.ROI2.E2dff = r2dff;
     photometry.ROI2.E1mc = g2mc;
     photometry.ROI2.E2mc = r2mc;
+    photometry.ROI2.E1z = g2z;
+    photometry.ROI2.E2z = r2z;
     photometry.ROI2.EI = i2dt;
     
     photometry.ROI3.name = "dHPC";
@@ -580,6 +587,8 @@ if saveMat
     photometry.ROI3.E2dff = r3dff;
     photometry.ROI3.E1mc = g3mc;
     photometry.ROI3.E2mc = r3mc;
+    photometry.ROI3.E1z = g3z;
+    photometry.ROI3.E2z = r3z;
     photometry.ROI3.EI = i3dt;
 
     photometry.EI_time = EI.Time;

@@ -35,7 +35,8 @@
 %% (0) Global Settings Variables + Initiation
 clear all; close all;
 % --- cd to local animal directory
-cd('C:\Users\brian\Documents\BYL\project-dopamine-tagging\M018\');
+cd('C:\Users\brian\Documents\BYL\project-dopamine-tagging\M012\');
+% cd('C:\Users\brian\Documents\BYL\project-dopamine-tagging\M018\');
 % cd('C:\Users\brian\Documents\BYL\project-opto-ripples\M008\')
 % --- global variables
 overwrite = false;
@@ -48,11 +49,11 @@ basepath = pwd;
 %% (1) Organize to standard directory structure
 
 % --- choose animal directory
-if ~exist('animalDir') || isempty(animalDir)
-    animalDir = uigetdir; % select folder
-    cd(animalDir);
-end
-disp(pwd);
+% if ~exist('animalDir') || isempty(animalDir)
+%     animalDir = uigetdir; % select folder
+%     cd(animalDir);
+% end
+animalDir = pwd;
 
 allpath = strsplit(genpath(animalDir),';'); % all folders
 cd(allpath{1});
@@ -212,7 +213,7 @@ if size(subSess,1)>=1
 end    
 
 %% (2.5) process digitalin files
-
+load([basename, 'session.mat']);
 digitalIn = bz_getDigitalIn(pwd,'fs',session.extracellular.sr);
 
 %% (3) Extract -ppd files (python) --> WIP
@@ -242,8 +243,14 @@ end
 pyrunfile(pyscript,'inputFromMatlab',pwd);
 
 %% (3) preprocess fiber photometry
-byl_preprocessPhotometry(pwd,'show',true,'plottype',1,'saveMat',false,'sync',false);
+byl_preprocessPhotometry(pwd,'show',true,'plottype',2,'saveMat',false,'sync',false);
 
+%% flip channels:
+f = figure(42);
+chi = f.Children.Children;
+for c = 1:numel(chi)
+    chi(c).Children = flipud(chi(c).Children);
+end
 %% (4) Spike sorting (matlab: kilosort3 | python: kilosort 4) --> WIP
 subSess = dir();
 if size(subSess,1)>=5
@@ -350,10 +357,46 @@ legend('FontSize',20);
 %                63,64,65,77,78,79,80,82,83,84,85,86, ...
 %                87,88,89,91,93,94,95,96,97,98,99,100, ...
 %                101,102,103,104,105,106,107,108,110,111]; % M012
-basename = 'amplifier';
-% load([basename, '.session.mat']);
+% basename = 'amplifier';
+
+% get bad channels
+load([basename, '.session.mat']);
 badChannels = session.channelTags.Bad.channels;
-SleepScoreMaster(pwd,'rejectChannels',badChannels);%,'ThetaChannels',[1 31],'SWChannels',[5 8]);
+
+% get times to ignore
+load([basename, '.DigitalIn.events.mat']);
+pokeChan = [4:11];
+stimChan = 14;
+noiseChan = [pokeChan, stimChan];
+noisyTimes = [];
+for i = 1:numel(noiseChan)
+    noisyTimes = [noisyTimes; digitalIn.intsPeriods{noiseChan(i)}];
+end
+noisyTimes(:,1) = noisyTimes(:,1) - 0.0005;
+noisyTimes(:,2) = noisyTimes(:,2) + 0.0005;
+noisyTimes = sortrows(noisyTimes,1);
+
+input = noisyTimes;
+output = [];
+query = noisyTimes(1,:);
+thresh = 5;
+for i = 2:size(noisyTimes,1)
+    if input(i,1) - query(2) < thresh
+        start = query(1);
+        stop = max([query(2) input(i,2)]);
+        query = [start stop];
+    else
+        output = [output; query];
+        query = input(i,:);
+    end
+end
+noisyTimes = [output; query];
+
+
+SleepScoreMaster(pwd, ...
+                 'rejectChannels',badChannels, ...
+                 'ignoretime',noisyTimes, ...
+                 'stickytrigger','false');%,'ThetaChannels',[1 31],'SWChannels',[5 8]);
 
 %% (9) extract ripples
 % Dictionary 
