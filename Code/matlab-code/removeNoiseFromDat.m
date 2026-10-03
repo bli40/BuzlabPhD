@@ -7,7 +7,7 @@ function removeNoiseFromDat(basepath,varargin)
 % INPUT
 % basepath      If not provided, takes pwd
 % threshold     Intervals to be edited.
-% method        'substractMedian' or 'substratMean' (defaut)
+% method        'substractMedian' or 'substractMean' (defaut)
 % keepDat       Default, false.
 %
 % <optional>
@@ -19,10 +19,10 @@ function removeNoiseFromDat(basepath,varargin)
 p = inputParser;
 addParameter(p,'basepath',pwd,@isdir);
 addParameter(p,'ch','all');
-addParameter(p,'method','substractMedian',@ischar);
-addParameter(p,'keepDat',false,@islogical);
+addParameter(p,'method','subtractMedian',@ischar);
+addParameter(p,'keepDat',true,@islogical);
 
-warning('Performing median/mean substraction!! Dat file will be compromised!! ');
+warning('Performing median/mean substraction!!');
 parse(p,varargin{:});
 ch = p.Results.ch;
 method = p.Results.method;
@@ -34,13 +34,10 @@ prevPath = pwd;
 cd(basepath);
 
 xml = LoadParameters;
-%%%%%%%%%%2024-05-22 Yuki Fujishima%%%%%%%%%%%%%%
-[~,basename] = fileparts(basepath);
-fileTargetAmplifier = dir(append(basename, '*.dat'));
-% fileTargetAmplifier = dir('amplifier*.dat');
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+fileTargetAmplifier = dir('amplifier*.dat');
 if isempty(fileTargetAmplifier)
-    filename = split(pwd,filesep); filename = filename{end};
+    filename = split(pwd,filesep); 
+    filename = filename{end};
     fileTargetAmplifier = dir([filename '*.dat']);
 end
 
@@ -54,8 +51,11 @@ end
 nChannels = xml.nChannels;
 duration = 1 * 60;
 frequency = xml.rates.wideband;
-fid = fopen(fileTargetAmplifier(1).name,'r'); filename = fileTargetAmplifier(1).name;
-C = strsplit(fileTargetAmplifier(1).name,'.dat'); filenameOut = [C{1} '_temp.dat'];
+fid = fopen(fileTargetAmplifier(1).name,'r'); 
+% filename = fileTargetAmplifier(1).name;
+C = strsplit(fileTargetAmplifier(1).name,'.dat'); 
+filename = [C{1} '_comref.dat'];
+filenameOut = [C{1} '_temp.dat'];
 fidOutput = fopen(filenameOut,'a');
 
 while 1
@@ -64,9 +64,9 @@ while 1
         break;
     end
     
-    if strcmpi('substractMedian',method)
+    if strcmpi('subtractMedian',method)
         m_data = median(data);
-    elseif strcmpi('substractMean',method)
+    elseif strcmpi('subtractMean',method)
         m_data = mean(data(ch,:));
     end
 
@@ -77,9 +77,10 @@ end
 fclose(fid);
 fclose(fidOutput);
 
-if ~keepDat
-    copyfile(filename, [C{1} '_original.dat']);
-end
+% if keepDat
+%     copyfile(filename, [C{1} '_original.dat']);
+% end
+
 delete(filename);
 movefile(filenameOut, filename);
 

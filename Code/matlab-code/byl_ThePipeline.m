@@ -35,7 +35,7 @@
 %% (0) Global Settings Variables + Initiation
 clear all; close all;
 % --- cd to local animal directory
-cd('C:\Users\brian\Documents\BYL\project-dopamine-tagging\M012\');
+% cd('C:\Users\brian\Documents\BYL\project-dopamine-tagging\M012\');
 % cd('C:\Users\brian\Documents\BYL\project-dopamine-tagging\M018\');
 % cd('C:\Users\brian\Documents\BYL\project-opto-ripples\M008\')
 % --- global variables
@@ -181,26 +181,62 @@ end
 basepath = pwd;
 [~,basename,~] = fileparts(basepath);
 subSess = dir('M*');
+subSess = subSess([subSess.isdir]);
+
 
 if ~isempty(dir('*sess*'))
-    if ~isempty(dir('*.dat'))
+    if ~isempty(dir([basename,'.dat']))
         fprintf(2,'Data already concatenated! Stopping concatenation.\n');
-    else
+        return
+    elseif ~isempty(dir('global.xml'))
         fprintf(2,'You are in the animal directory, not the session directory! Stopping concatenation.\n');
+        return
     end
-    return;
 end
 
 if size(subSess,1)>=1
     if size(subSess,1)==1
         fprintf(2,'No sub-sessions for today! Copying -dat and -xml files parent directory and renaming to match.\n');
+        try
+            copyfile(strcat(subSess.name, '\digitalin.dat'), basepath);
+        catch
+            fprintf('\tNo digitalin-dat file.\n');
+        end
+        
+        try
+            copyfile(strcat(subSess.name, '\time.dat'), basepath);
+        catch
+            fprintf('\tNo time-dat file.\n');
+        end
+        
+        try
+            copyfile(strcat(subSess.name, '\auxiliary.dat'),basepath);
+        catch
+            fprintf('\tNo auxiliary-dat file.\n');
+        end
+        
+        try
+            copyfile(strcat(subSess.name, '\amplifier.dat'),[basepath,filesep,basename,'.dat']);
+        catch
+            fprintf('\tNo amplifier-dat file.\n');
+        end
+    else
+        % --- Concatenate sessions       
+        bz_ConcatenateDats(pwd,0,1);
     end
+    
+    for n = 1:numel(subSess)
+        doricFiles = dir([subSess(n).name,filesep,'*.csv']);
+        for d = 1:numel(doricFiles)
+            copyfile([doricFiles(d).folder, filesep, doricFiles(d).name],basepath);
+        end
+    end
+
     if ~exist(strcat(basename,'.xml'),'file')
         delete(strcat(basename,'.xml'));% bring xml file
         copyfile(strcat(animalDir,'\global.xml'),strcat(basename,'.xml'),'f');
     end
-    % --- Concatenate sessions       
-    bz_ConcatenateDats(pwd,0,1);
+    
 
     % --- Loading metadata
     try
@@ -213,8 +249,9 @@ if size(subSess,1)>=1
 end    
 
 %% (2.5) process digitalin files
-load([basename, 'session.mat']);
+load([basename, '.session.mat']);
 digitalIn = bz_getDigitalIn(pwd,'fs',session.extracellular.sr);
+
 
 %% (3) Extract -ppd files (python) --> WIP
 haveSessions = dir('*sess*');
@@ -243,9 +280,9 @@ end
 pyrunfile(pyscript,'inputFromMatlab',pwd);
 
 %% (3) preprocess fiber photometry
-byl_preprocessPhotometry(pwd,'show',true,'plottype',2,'saveMat',false,'sync',false);
+byl_preprocessPhotometry(pwd,'show',true,'plottype',1,'saveMat',false,'sync',false);
 
-%% flip channels:
+%flip channels:
 f = figure(42);
 chi = f.Children.Children;
 for c = 1:numel(chi)
@@ -359,44 +396,56 @@ legend('FontSize',20);
 %                101,102,103,104,105,106,107,108,110,111]; % M012
 % basename = 'amplifier';
 
-% get bad channels
-load([basename, '.session.mat']);
-badChannels = session.channelTags.Bad.channels;
+% common median filtering
+removeNoiseFromDat(pwd,'method','subtractMean');
 
-% get times to ignore
-load([basename, '.DigitalIn.events.mat']);
-pokeChan = [4:11];
-stimChan = 14;
-noiseChan = [pokeChan, stimChan];
-noisyTimes = [];
-for i = 1:numel(noiseChan)
-    noisyTimes = [noisyTimes; digitalIn.intsPeriods{noiseChan(i)}];
-end
-noisyTimes(:,1) = noisyTimes(:,1) - 0.0005;
-noisyTimes(:,2) = noisyTimes(:,2) + 0.0005;
-noisyTimes = sortrows(noisyTimes,1);
-
-input = noisyTimes;
-output = [];
-query = noisyTimes(1,:);
-thresh = 5;
-for i = 2:size(noisyTimes,1)
-    if input(i,1) - query(2) < thresh
-        start = query(1);
-        stop = max([query(2) input(i,2)]);
-        query = [start stop];
-    else
-        output = [output; query];
-        query = input(i,:);
-    end
-end
-noisyTimes = [output; query];
+% % get bad channels
+% load([basename, '.session.mat']);
+% badChannels = session.channelTags.Bad.channels;
+% 
+% % get times to ignore
+% load([basename, '.DigitalIn.events.mat']);
+% pokeChan = [4:11];
+% stimChan = 14;
+% noiseChan = [pokeChan, stimChan];
+% noisyTimes = [];
+% for i = 1:numel(noiseChan)
+%     noisyTimes = [noisyTimes; digitalIn.intsPeriods{noiseChan(i)}];
+% end
+% noisyTimes(:,1) = noisyTimes(:,1) - 0.0005;
+% noisyTimes(:,2) = noisyTimes(:,2) + 0.0005;
+% noisyTimes = sortrows(noisyTimes,1);
+% 
+% input = noisyTimes;
+% output = [];
+% query = noisyTimes(1,:);
+% thresh = 5;
+% for i = 2:size(noisyTimes,1)
+%     if input(i,1) - query(2) < thresh
+%         start = query(1);
+%         stop = max([query(2) input(i,2)]);
+%         query = [start stop];
+%     else
+%         output = [output; query];
+%         query = input(i,:);
+%     end
+% end
+% noisyTimes = [output; query];
+% 
+% noise.timestamps = noisyTimes;
+% save([basepath filesep basename '.noise.events.mat'],'noise');
+% 
+% load([basename,'.MergePoints.events.mat']);
+% mazetimes = MergePoints.timestamps(1,:);
 
 
 SleepScoreMaster(pwd, ...
                  'rejectChannels',badChannels, ...
-                 'ignoretime',noisyTimes, ...
                  'stickytrigger','false');%,'ThetaChannels',[1 31],'SWChannels',[5 8]);
+%% (8.5) manually edit Sleep States
+TheStateEditor;
+load([basename, '.SleepState.states.mat']);
+ClusterStates_MakeFigure(SleepState,pwd,true);
 
 %% (9) extract ripples
 % Dictionary 
@@ -406,7 +455,7 @@ SleepScoreMaster(pwd, ...
 %   - N19 :     
 %   - M012  :   pyrCh = 92; noiseCh = 15;
 %   - M008  :   pyrCh = 64; noiseCh = 71;    
-pyrCh = 51; noiseCh = 15;
+pyrCh = 93; noiseCh = 15;
 % pyrCh = ripples.detectorinfo.detectionchannel;  %75 for n11 115 67 for n11
 % noiseCh = ripples.detectorinfo.noisechannel;
 SleepStateFile = dir("*SleepState.states.mat");
