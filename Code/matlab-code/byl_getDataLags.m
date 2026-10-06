@@ -1,23 +1,52 @@
-%% Exploratory code for GRAB sensor analysis
-clear all; close all;
-basepath = pwd;
-[~, basename, ~] = fileparts(basepath);
+function [outputArg1,outputArg2] = byl_getDataLags(inputArg1,inputArg2)
+%byl_getDataLags - Function to get lags in order to synchronize multiple possible data types.
+%
+% USAGE
+%    synclags = byl_getDataLags(file1,file2,...,fileN)
+%
+% INPUTS - note these are NOT name-value pairs... just raw values
+%    sessionPath    path to session directory ('*sess*')
+%    <options>      optional list of property-value pairs (see tables below)
+%
+%
+%   =========================================================================
+%     Properties    Values
+%   -------------------------------------------------------------------------
+%     'overwrite'   true if overwrite existing synced files. (default =
+%                   false)
+%     'verbose'     true if want to see all the files in the session.
+%                   (default = false)
+%     'dryrun'      true if you don't want to save data (default = false)
+%   =========================================================================
+%
+% OUTPUT
+%
+%    ripples        buzcode format .event. struct with the following fields
+%                   .timestamps        Nx2 matrix of start/stop times for
+%                                      each ripple
+%                   .detectorName      string ID for detector function used
+%                   .peaks             Nx1 matrix of peak power timestamps 
+%                   .stdev             standard dev used as threshold
+%                   .noise             candidate ripples that were
+%                                      identified as noise and removed
+%                   .peakNormedPower   Nx1 matrix of peak power values
+%                   .detectorParams    struct with input parameters given
+%                                      to the detector
+% SEE ALSO
+%
+%       ...
+%
+% 2026-02-22 by Brian Y. Li
 
-%% (2.5) process digitalin files
-load([basename, '.session.mat']);
-% digitalIn = bz_getDigitalIn(pwd,'fs',session.extracellular.sr);
 
-%% (3) preprocess fiber photometry
-byl_preprocessPhotometry(pwd,'show',true,'plottype',1,'saveMat',true,'sync',false);
 
-%flip channels:
-vidFrame = figure(42);
-chi = vidFrame.Children.Children;
-for c = 1:numel(chi)
-    chi(c).Children = flipud(chi(c).Children);
-end
 
-%%
+%Inputs:
+%   - file1, file2, etc. to synchronize. Lags are relative to file1.     
+%   
+%Returns:
+%   - [basename].synclags.mat file 
+
 % Extract barcode data from Intan file
 srIntan = session.extracellular.sr;
 digitalIntan = 'digitalin.dat';
@@ -37,7 +66,7 @@ srDoric = 1/mean(diff(dio.Time)); %Get samplingrate
 barcodeDoric = dio.DigitalCh2; %High/low signal
 tDoric = dio.Time;
 
-%% Extract barcode data from video file
+% Extract barcode data from video file
 mazevid = dir('*.mp4');
 v = VideoReader([mazevid.name]);
 h = v.Height;
@@ -73,27 +102,8 @@ temp = barcodeBlackfly;
 barcodeBlackfly = temp;
 cutoff = round(mean([min(barcodeBlackfly), max(barcodeBlackfly)]));
 barcodeBlackfly = barcodeBlackfly > cutoff;
-%% precompute bounding box of mask
-% rows = any(maskCircle, 2);
-% cols = any(maskCircle, 1);
-% rowIdx = find(rows);
-% colIdx = find(cols);
-% rMin = rowIdx(1); rMax = rowIdx(end);
-% cMin = colIdx(1); cMax = colIdx(end);
-% maskCrop = maskCircle(rMin:rMax, cMin:cMax);  % small cropped mask
-% 
-% v.CurrentTime = 0;
-% n = 0;
-% tic
-% while hasFrame(v)
-%     n = n + 1;
-%     vidFrame = readFrame(v);
-%     patch = vidFrame(rMin:rMax, cMin:cMax, 1);  % crop first, then mask
-%     barcodeBlackfly(n) = sum(double(patch(maskCrop)), 'all');
-% end
-% toc
 
-%% Resample barcodeIntan to match barcodeDoric sampling rate
+% Resample barcodeIntan to match barcodeDoric sampling rate
 downsampleRate = srIntan / srDoric;
 barcodeIntan_Downsampled = downsample(double(barcodeIntan), downsampleRate);
 tIntan_Downsampled = linspace(0, length(barcodeIntan) / srIntan, length(barcodeIntan_Downsampled));
@@ -111,7 +121,7 @@ timeShift_Doric = maxLag / double(srDoric); % Convert lag to time (seconds)
 tDoric_shifted = tDoric + timeShift_Doric;
 disp(timeShift_Doric);
 
-%% Resample barcodeIntan to match barcodeBlackfly sampling rate
+% Resample barcodeIntan to match barcodeBlackfly sampling rate
 downsampleRate = srIntan / srBlackfly;
 try
     barcodeIntan_Downsampled = downsample(double(barcodeIntan), downsampleRate);
@@ -133,19 +143,11 @@ timeShift_Blackfly = maxLag / double(srBlackfly); % Convert lag to time (seconds
 tBlackfly_shifted = tBlackfly + timeShift_Blackfly;
 disp(timeShift_Blackfly);
 
-%%
 
-T = {tIntan(:), tDoric_shifted(:), tBlackfly_shifted(:)};
-D = {barcodeIntan(:)+2, barcodeDoric(:)+1, barcodeBlackfly(:)};
-quickTimeSeriesScroller(T,D)
 
-%%
-T = {tIntan(:), tDoric_shifted(:)};
-D = {barcodeIntan(:)+2, barcodeDoric(:)+1};
-quickTimeSeriesScroller(T,D)
-
-%%
+% Save synclags
 synclags.timeShift_Intan = 0;
 synclags.timeShift_Doric = timeShift_Doric;
 synclags.timeShift_Blackfly = timeShift_Blackfly;
 save([basepath, filesep, basename, '.synclags.mat'], 'synclags');
+end

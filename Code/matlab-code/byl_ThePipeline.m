@@ -230,6 +230,8 @@ if size(subSess,1)>=1
         for d = 1:numel(doricFiles)
             copyfile([doricFiles(d).folder, filesep, doricFiles(d).name],basepath);
         end
+        blackflyFiles = dir([subSess(n).name,filesep,'*.mp4']);
+        copyfile([blackflyFiles.folder, filesep, blackflyFiles.name],basepath);
     end
 
     if ~exist(strcat(basename,'.xml'),'file')
