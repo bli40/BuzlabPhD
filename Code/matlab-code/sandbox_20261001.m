@@ -134,7 +134,6 @@ tBlackfly_shifted = tBlackfly + timeShift_Blackfly;
 disp(timeShift_Blackfly);
 
 %%
-
 T = {tIntan(:), tDoric_shifted(:), tBlackfly_shifted(:)};
 D = {barcodeIntan(:)+2, barcodeDoric(:)+1, barcodeBlackfly(:)};
 quickTimeSeriesScroller(T,D)
@@ -149,3 +148,126 @@ synclags.timeShift_Intan = 0;
 synclags.timeShift_Doric = timeShift_Doric;
 synclags.timeShift_Blackfly = timeShift_Blackfly;
 save([basepath, filesep, basename, '.synclags.mat'], 'synclags');
+
+%% apply lags
+load([basename, '.photometry.mat']);
+load([basename, '.synclags.mat']);
+photometry.EI_time = photometry.EI_time + synclags.timeShift_Doric;
+photometry.E1_time = photometry.E1_time + synclags.timeShift_Doric;
+photometry.E2_time = photometry.E2_time + synclags.timeShift_Doric;
+photometry.synced = true;
+save([basename, '.photometry.mat'],'photometry');
+
+%% get behavioral performance
+load([basename, '.session.mat']);
+srIntan = session.extracellular.sr;
+digitalIntan = 'digitalin.dat';
+m = memmapfile(digitalIntan, 'Format', 'uint16', 'writable', false);
+raw_digital = m.Data;
+clear m
+
+npChan = 4;
+rwChan = 12;
+trChan = 13;
+
+channels2Extract = [npChan, rwChan, trChan];
+
+for i = 1:numel(channels2Extract)
+    digiIntan{channels2Extract(i)} = double(bitget(raw_digital,channels2Extract(i)));
+end
+timeIntan = linspace(0,length(digiIntan{trChan})/srIntan,length(digiIntan{trChan}));
+
+%%
+% Detect behavioral event onsets from the extracted digital channels
+npOnsets = find(diff(digiIntan{npChan}) > 0) + 1;
+rwOnsets = find(diff(digiIntan{rwChan}) > 0) + 1;
+trOnsets = find(diff(digiIntan{trChan}) > 0) + 1;
+omOnsets = find(diff(digiIntan{npChan} & ~digiIntan{rwChan}) > 0) + 1;
+% Detect behavioral event offsets from the extracted digital channels
+npOffsets = find(diff(digiIntan{npChan}) < 0) + 1;
+rwOffsets = find(diff(digiIntan{rwChan}) < 0) + 1;
+trOffsets = find(diff(digiIntan{trChan}) < 0) + 1;
+omOffsets = find(diff(digiIntan{npChan} & ~digiIntan{rwChan}) < 0) + 1;
+
+npWindows = timeIntan([npOnsets npOffsets]);
+attempts = byl_mergeEvents(npWindows, 2);
+rewards = timeIntan(rwOnsets)';
+trialStarts = timeIntan(trOnsets);
+for i = 1:size(attempts,1)
+    if sum((rewards > attempts(i,1) & rewards < attempts(i,1)+2)) == 0
+        attempts(i,:) = NaN;
+    end
+end
+
+numel(~isnan(attempts))
+%% 
+rw_DA_NAc = byl_getETA(rewards, photometry.ROI1.E1dff, photometry.E1_time, 'duration',[-3 3], 'sampleRate',10000);
+rw_DA_CA1 = byl_getETA(rewards, photometry.ROI2.E1dff, photometry.E1_time, 'duration',[-3 3], 'sampleRate',10000);
+rw_DA_CA3 = byl_getETA(rewards, photometry.ROI3.E1dff, photometry.E1_time, 'duration',[-3 3], 'sampleRate',10000);
+
+rw_ACh_NAc = byl_getETA(rewards, photometry.ROI1.E2dff, photometry.E2_time, 'duration',[-3 3], 'sampleRate',10000);
+rw_ACh_CA1 = byl_getETA(rewards, photometry.ROI2.E2dff, photometry.E2_time, 'duration',[-3 3], 'sampleRate',10000);
+rw_ACh_CA3 = byl_getETA(rewards, photometry.ROI3.E2dff, photometry.E2_time, 'duration',[-3 3], 'sampleRate',10000);
+
+%% Reward Responses
+figure(88); clf; hold on;
+
+subplot(1,2,1); cla; hold on;
+blue = abyss(3);
+e = 1;
+plot(rw_DA_NAc.window, rw_DA_NAc.avg, 'color', blue(e,:), 'LineWidth', 2,...
+    'DisplayName','NAc Dopamine');
+x = [rw_DA_NAc.window, fliplr(rw_DA_NAc.window)];
+y = [rw_DA_NAc.avg + rw_DA_NAc.sem, fliplr(rw_DA_NAc.avg - rw_DA_NAc.sem)];
+patch(x,y,blue(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
+
+e = 2;
+plot(rw_DA_CA1.window, rw_DA_CA1.avg, 'color', blue(e,:), 'LineWidth', 2,...
+    'DisplayName','CA1 Dopamine');
+x = [rw_DA_CA1.window, fliplr(rw_DA_CA1.window)];
+y = [rw_DA_CA1.avg + rw_DA_CA1.sem, fliplr(rw_DA_CA1.avg - rw_DA_CA1.sem)];
+patch(x,y,blue(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
+
+e = 3;
+plot(rw_DA_CA3.window, rw_DA_CA3.avg, 'color', blue(e,:), 'LineWidth', 2,...
+    'DisplayName','CA3 Dopamine');
+x = [rw_DA_CA3.window, fliplr(rw_DA_CA3.window)];
+y = [rw_DA_CA3.avg + rw_DA_CA3.sem, fliplr(rw_DA_CA3.avg - rw_DA_CA3.sem)];
+patch(x,y,blue(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
+
+legend();
+xlabel('time relative to reward (s)','FontSize',20);
+ylabel('dF / F', 'FontSize',20);
+title('Dopaminergic Response to Reward', 'FontSize',16);
+xline(0, '--r', 'HandleVisibility', 'off');
+
+subplot(1,2,2); cla; hold on;
+red = copper(3);
+e = 1;
+plot(rw_ACh_NAc.window, rw_ACh_NAc.avg, 'color', red(e,:), 'LineWidth', 2,...
+    'DisplayName','NAc Dopamine');
+x = [rw_ACh_NAc.window, fliplr(rw_ACh_NAc.window)];
+y = [rw_ACh_NAc.avg + rw_ACh_NAc.sem, fliplr(rw_ACh_NAc.avg - rw_ACh_NAc.sem)];
+patch(x,y,red(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
+
+e = 2;
+plot(rw_ACh_CA1.window, rw_ACh_CA1.avg, 'color', red(e,:), 'LineWidth', 2,...
+    'DisplayName','CA1 Dopamine');
+x = [rw_ACh_CA1.window, fliplr(rw_ACh_CA1.window)];
+y = [rw_ACh_CA1.avg + rw_ACh_CA1.sem, fliplr(rw_ACh_CA1.avg - rw_ACh_CA1.sem)];
+patch(x,y,red(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
+
+e = 3;
+plot(rw_ACh_CA3.window, rw_ACh_CA3.avg, 'color', red(e,:), 'LineWidth', 2,...
+    'DisplayName','CA3 Dopamine');
+x = [rw_ACh_CA3.window, fliplr(rw_ACh_CA3.window)];
+y = [rw_ACh_CA3.avg + rw_ACh_CA3.sem, fliplr(rw_ACh_CA3.avg - rw_ACh_CA3.sem)];
+patch(x,y,red(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
+
+legend();
+xlabel('time relative to reward (s)','FontSize',20);
+ylabel('dF / F', 'FontSize',20);
+title('Dopaminergic Response to Reward', 'FontSize',16);
+xline(0, '--r', 'HandleVisibility', 'off');
+
+linkaxes()
