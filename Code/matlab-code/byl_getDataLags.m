@@ -36,7 +36,7 @@ function [outputArg1,outputArg2] = byl_getDataLags(inputArg1,inputArg2)
 %
 %       ...
 %
-% 2026-02-22 by Brian Y. Li
+% 2026-10-06 by Brian Y. Li
 
 
 

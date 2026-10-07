@@ -1,5 +1,5 @@
 function eta = byl_getETA(events, data, timestamps, varargin)
-%byl_getETA - Plot event-triggered averages for any waveform
+%byl_GetETA - Plot event-triggered averages for any waveform
 %
 %
 % USAGE
@@ -12,10 +12,10 @@ function eta = byl_getETA(events, data, timestamps, varargin)
 %    plot the ETA in a new figure or a passed handle.
 %
 % INPUTS - note these are NOT name-value pairs... just raw values
-%    events          event timestamps (e.g. ripples.timestamps(:,1))
-%    data            timeseries data from which to pull windowed segments
-%    timestamps      timestamps of time series data
-%    <options>       optional list of property-value pairs (see tables below)
+%    events         event timestamps (e.g. ripples.timestamps(:,1))
+%	 data   	    timeseries data from which to pull windowed segments
+%    timestamps
+%    <options>      optional list of property-value pairs (see tables below)
 %
 %
 %    =========================================================================
@@ -23,13 +23,24 @@ function eta = byl_getETA(events, data, timestamps, varargin)
 %    -------------------------------------------------------------------------
 %     'durations'   time window before and after event, in seconds
 %                   (default = [-5 5]). 
-%     'samplerate'   sampling rate (in Hz) (default = 1250Hz)
+%     'sampleRate'   sampling rate (in Hz) (default = 1250Hz)
 %     'show'        plot results (default = 'off')
 %     'plotType'   1=original version (several plots); 2=only raw lfp
 %    =========================================================================
 %
 % OUTPUT
 %
+%    ripples        buzcode format .event. struct with the following fields
+%                   .timestamps        Nx2 matrix of start/stop times for
+%                                      each ripple
+%                   .detectorName      string ID for detector function used
+%                   .peaks             Nx1 matrix of peak power timestamps 
+%                   .stdev             standard dev used as threshold
+%                   .noise             candidate ripples that were
+%                                      identified as noise and removed
+%                   .peakNormedPower   Nx1 matrix of peak power values
+%                   .detectorParams    struct with input parameters given
+%                                      to the detector
 % SEE ALSO
 %
 %       ...
@@ -37,56 +48,49 @@ function eta = byl_getETA(events, data, timestamps, varargin)
 % 2026-01-31 by Brian Y. Li
 
 
-% --- Check number of parameters ---
+% Check number of parameters
 if nargin < 3
   error('Incorrect number of parameters.');
 end
 
-% --- Default values ---
+% Default values
 p = inputParser;
 addParameter(p,'durations',[-5 5],@isnumeric)
-addParameter(p,'samplerate',1250,@isnumeric)
+addParameter(p,'sampleRate',1250,@isnumeric)
 addParameter(p,'show','off',@isstr)
 addParameter(p,'normalization','none',@isstr)
 parse(p,varargin{:})
 
-% --- assign parameters (either defaults or given) ---
+% assign parameters (either defaults or given)
 events = events;
 xSeries = data;
 tSeries = timestamps;
 durations = p.Results.durations;
-sr = p.Results.samplerate;
+sampleRate = p.Results.sampleRate;
 show = p.Results.show;
 norm = p.Results.normalization;
 
-% --- Parameters ---
-fs = sr;           % LFP sampling rate (Hz)
+% Parameters
+fs = sampleRate;           % LFP sampling rate (Hz)
 pre  = durations(1);      % seconds before spike
 post = durations(2);      % seconds after spike
 
-% --- Define sample indices ---
+% Define relative time axis (not samples)
 tWind = pre : 1/fs : post;
 winLength = numel(tWind);
-winSamples = round(tWind * fs);
 
-% --- Convert events to sample indices ---
-t0 = timestamps(1);
-eventIdx = round((events - t0) * fs) + 1;
-nData = numel(data);
-
-% --- Preallocate ---
 etaMatrix = nan(numel(events), winLength);
 tSampMatrix = nan(numel(events), winLength);
 keepEvent = false(numel(events),1);
 for i = 1:numel(events)
-    idx = eventIdx(i) + winSamples;
+    tSample = events(i) + tWind;
 
-    if idx(1) < 1 || idx(end) > nData
+    if tSample(1) < tSeries(1) || tSample(end) > tSeries(end)
         continue
     end
 
-    etaMatrix(i,:) = data(idx);
-    tSampMatrix(i,:) = timestamps(idx);
+    etaMatrix(i,:) = interp1(tSeries, xSeries, tSample, 'linear');
+    tSampMatrix(i,:) = tSample;
     keepEvent(i) = true;
 end
     
@@ -95,9 +99,9 @@ tSampMatrix = tSampMatrix(keepEvent,:);
 
 
 
-% --- Compute Statistics ---
-eta_avg = mean(etaMatrix, 1,'omitnan');
-eta_std = std(etaMatrix, 0, 1,'omitnan');
+% Event-triggered average
+eta_avg = mean(etaMatrix, 1);
+eta_std = std(etaMatrix, 0, 1);
 eta_sem = eta_std / sqrt(size(etaMatrix,1));
 eta = struct('avg',eta_avg, ...
              'std',eta_std, ...
@@ -105,11 +109,10 @@ eta = struct('avg',eta_avg, ...
              'window',tWind, ...
              'chunks',etaMatrix, ...
              'timestamps',tSampMatrix);
-% --- Optional normalization ---
 if ~strcmp(norm, 'none')
     normedMat = normalize(etaMatrix,2,norm);
-    normedAvg = mean(normedMat,1,'omitnan');
-    normedSem = std(normedMat,0,1,'omitnan') / sqrt(size(normedMat,1));
+    normedAvg = mean(normedMat,1);
+    normedSem = std(normedMat,0,1) / sqrt(size(normedMat,1));
     eta.normChunks = normedMat;
     eta.normAvg = normedAvg;
     eta.normSem = normedSem;
