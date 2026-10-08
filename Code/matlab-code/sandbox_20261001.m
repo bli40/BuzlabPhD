@@ -189,80 +189,119 @@ rwOffsets = find(diff(digiIntan{rwChan}) < 0) + 1;
 trOffsets = find(diff(digiIntan{trChan}) < 0) + 1;
 omOffsets = find(diff(digiIntan{npChan} & ~digiIntan{rwChan}) < 0) + 1;
 
+trialStarts = timeIntan(trOnsets);
 npWindows = timeIntan([npOnsets npOffsets]);
 attempts = byl_mergeEvents(npWindows, 2);
 rewards = timeIntan(rwOnsets)';
-trialStarts = timeIntan(trOnsets);
+omissions = nan(length(attempts),1);
 for i = 1:size(attempts,1)
-    if sum((rewards > attempts(i,1) & rewards < attempts(i,1)+2)) == 0
-        attempts(i,:) = NaN;
+    if sum((rewards > attempts(i,1) & rewards < attempts(i,1)+3)) == 0
+        omissions(i) = attempts(i,1);
     end
 end
-
-numel(~isnan(attempts))
+omissions = omissions(~isnan(omissions));
 %% 
 rw_DA_NAc = byl_getETA(rewards, photometry.ROI1.E1dff, photometry.E1_time, 'duration',[-3 3], 'sampleRate',10000);
 rw_DA_CA1 = byl_getETA(rewards, photometry.ROI2.E1dff, photometry.E1_time, 'duration',[-3 3], 'sampleRate',10000);
 rw_DA_CA3 = byl_getETA(rewards, photometry.ROI3.E1dff, photometry.E1_time, 'duration',[-3 3], 'sampleRate',10000);
 
+om_DA_NAc = byl_getETA(omissions, photometry.ROI1.E1dff, photometry.E1_time, 'duration',[-3 3], 'sampleRate',10000);
+om_DA_CA1 = byl_getETA(omissions, photometry.ROI2.E1dff, photometry.E1_time, 'duration',[-3 3], 'sampleRate',10000);
+om_DA_CA3 = byl_getETA(omissions, photometry.ROI3.E1dff, photometry.E1_time, 'duration',[-3 3], 'sampleRate',10000);
+
+
+
 rw_ACh_NAc = byl_getETA(rewards, photometry.ROI1.E2dff, photometry.E2_time, 'duration',[-3 3], 'sampleRate',10000);
 rw_ACh_CA1 = byl_getETA(rewards, photometry.ROI2.E2dff, photometry.E2_time, 'duration',[-3 3], 'sampleRate',10000);
 rw_ACh_CA3 = byl_getETA(rewards, photometry.ROI3.E2dff, photometry.E2_time, 'duration',[-3 3], 'sampleRate',10000);
 
-%% Reward Responses
+%% dopamine
 figure(88); clf; hold on;
 
 subplot(1,2,1); cla; hold on;
-blue = abyss(3);
+cola = lines(4);
 e = 1;
-plot(rw_DA_NAc.window, rw_DA_NAc.avg, 'color', blue(e,:), 'LineWidth', 2,...
+plot(rw_DA_NAc.window, rw_DA_NAc.avg, 'color', cola(e,:), 'LineWidth', 2,...
     'DisplayName','NAc Dopamine');
 x = [rw_DA_NAc.window, fliplr(rw_DA_NAc.window)];
 y = [rw_DA_NAc.avg + rw_DA_NAc.sem, fliplr(rw_DA_NAc.avg - rw_DA_NAc.sem)];
-patch(x,y,blue(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
+patch(x,y,cola(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
 
 e = 2;
-plot(rw_DA_CA1.window, rw_DA_CA1.avg, 'color', blue(e,:), 'LineWidth', 2,...
+plot(rw_DA_CA1.window, rw_DA_CA1.avg, 'color', cola(e,:), 'LineWidth', 2,...
     'DisplayName','CA1 Dopamine');
 x = [rw_DA_CA1.window, fliplr(rw_DA_CA1.window)];
 y = [rw_DA_CA1.avg + rw_DA_CA1.sem, fliplr(rw_DA_CA1.avg - rw_DA_CA1.sem)];
-patch(x,y,blue(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
+patch(x,y,cola(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
 
 e = 3;
-plot(rw_DA_CA3.window, rw_DA_CA3.avg, 'color', blue(e,:), 'LineWidth', 2,...
+plot(rw_DA_CA3.window, rw_DA_CA3.avg, 'color', cola(e,:), 'LineWidth', 2,...
     'DisplayName','CA3 Dopamine');
 x = [rw_DA_CA3.window, fliplr(rw_DA_CA3.window)];
 y = [rw_DA_CA3.avg + rw_DA_CA3.sem, fliplr(rw_DA_CA3.avg - rw_DA_CA3.sem)];
-patch(x,y,blue(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
+patch(x,y,cola(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
 
-legend();
+legend('FontSize',12,'Location','northwest');
 xlabel('time relative to reward (s)','FontSize',20);
 ylabel('dF / F', 'FontSize',20);
 title('Dopaminergic Response to Reward', 'FontSize',16);
+set(gca,'TitleHorizontalAlignment','left');
 xline(0, '--r', 'HandleVisibility', 'off');
 
 subplot(1,2,2); cla; hold on;
-red = copper(3);
+colb = lines(4);
 e = 1;
-plot(rw_ACh_NAc.window, rw_ACh_NAc.avg, 'color', red(e,:), 'LineWidth', 2,...
+plot(om_DA_NAc.window, om_DA_NAc.avg, 'color', colb(e,:), 'LineWidth', 2,...
+    'DisplayName','NAc Dopamine');
+x = [om_DA_NAc.window, fliplr(om_DA_NAc.window)];
+y = [om_DA_NAc.avg + om_DA_NAc.sem, fliplr(om_DA_NAc.avg - om_DA_NAc.sem)];
+patch(x,y,colb(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
+
+e = 2;
+plot(om_DA_CA1.window, om_DA_CA1.avg, 'color', colb(e,:), 'LineWidth', 2,...
+    'DisplayName','CA1 Dopamine');
+x = [om_DA_CA1.window, fliplr(om_DA_CA1.window)];
+y = [om_DA_CA1.avg + om_DA_CA1.sem, fliplr(om_DA_CA1.avg - om_DA_CA1.sem)];
+patch(x,y,colb(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
+
+e = 3;
+plot(om_DA_CA3.window, om_DA_CA3.avg, 'color', colb(e,:), 'LineWidth', 2,...
+    'DisplayName','CA3 Dopamine');
+x = [om_DA_CA3.window, fliplr(om_DA_CA3.window)];
+y = [om_DA_CA3.avg + om_DA_CA3.sem, fliplr(om_DA_CA3.avg - om_DA_CA3.sem)];
+patch(x,y,colb(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
+
+legend('FontSize',12,'Location','northwest');
+xlabel('time relative to omission (s)','FontSize',20);
+ylabel('dF / F', 'FontSize',20);
+title('Dopaminergic Response to Omission', 'FontSize',16);
+set(gca,'TitleHorizontalAlignment','left');
+xline(0, '--r', 'HandleVisibility', 'off');
+
+linkaxes()
+%% acetylcholine responses
+subplot(1,2,2); cla; hold on;
+colb = copper(3);
+e = 1;
+plot(rw_ACh_NAc.window, rw_ACh_NAc.avg, 'color', colb(e,:), 'LineWidth', 2,...
     'DisplayName','NAc Dopamine');
 x = [rw_ACh_NAc.window, fliplr(rw_ACh_NAc.window)];
 y = [rw_ACh_NAc.avg + rw_ACh_NAc.sem, fliplr(rw_ACh_NAc.avg - rw_ACh_NAc.sem)];
-patch(x,y,red(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
+patch(x,y,colb(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
 
 e = 2;
-plot(rw_ACh_CA1.window, rw_ACh_CA1.avg, 'color', red(e,:), 'LineWidth', 2,...
+plot(rw_ACh_CA1.window, rw_ACh_CA1.avg, 'color', colb(e,:), 'LineWidth', 2,...
     'DisplayName','CA1 Dopamine');
 x = [rw_ACh_CA1.window, fliplr(rw_ACh_CA1.window)];
 y = [rw_ACh_CA1.avg + rw_ACh_CA1.sem, fliplr(rw_ACh_CA1.avg - rw_ACh_CA1.sem)];
-patch(x,y,red(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
+patch(x,y,colb(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
 
 e = 3;
-plot(rw_ACh_CA3.window, rw_ACh_CA3.avg, 'color', red(e,:), 'LineWidth', 2,...
+plot(rw_ACh_CA3.window, rw_ACh_CA3.avg, 'color', colb(e,:), 'LineWidth', 2,...
     'DisplayName','CA3 Dopamine');
 x = [rw_ACh_CA3.window, fliplr(rw_ACh_CA3.window)];
 y = [rw_ACh_CA3.avg + rw_ACh_CA3.sem, fliplr(rw_ACh_CA3.avg - rw_ACh_CA3.sem)];
-patch(x,y,red(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
+patch(x,y,colb(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
 
 legend();
 xlabel('time relative to reward (s)','FontSize',20);
