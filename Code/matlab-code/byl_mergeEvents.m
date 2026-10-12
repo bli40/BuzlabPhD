@@ -16,7 +16,7 @@ function mergedEvents = byl_mergeEvents(eventWindows, threshold)
 %
 % SEE ALSO
 %
-%       bz_FindRipples
+%       bz_FindRipples.m
 %
 % 2026-10-07 by Brian Y. Li
 

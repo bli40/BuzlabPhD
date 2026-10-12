@@ -12,7 +12,7 @@ function photometry = byl_preprocessPhotometry(varargin)
 %     Properties    Values
 %    -------------------------------------------------------------------------
 %     'source'      recording system used (default='rbfmc'). 
-%     'numChans'    number of excitations (including isosbestic, default=3). 
+%     'numExcite'   number of excitation channels (including isosbestic, default=3). 
 %     'show'        plot results (default=false)
 %     'saveMat'     logical (default=false) to save in buzcode format
 %     'sync'        logical (default=false) to sync with digitalin/pulsepal
@@ -86,35 +86,36 @@ fpCamDI = p.Results.fpCamDI;
 %% Load data files
 switch source 
     case 'rbfmc'
-        datafiles = dir("*_*_*.csv");
-
-        fprintf("Found %i putative RBFMC data files.\n",numel(datafiles));
-        tknames = cellfun(@(x) regexp(x, "(?<animal>\w+)_(?<date>\w+)_(?<time>\w+)_(?<epoch>\w+)_(?<channel>\w+)",'names'), ...
-                            {datafiles.name});
-        mouse = string(unique({tknames.animal}));
-        date = string(unique({tknames.date}));
-        time = string(unique({tknames.time}));
-        epochs = string(unique({tknames.epoch}));
-        channels = string(unique({tknames.channel}));
+        datafiles = dir("*\*_*_*.csv");
+        epochs = unique({datafiles.folder});
+        channels = unique(split({datafiles.name},'_'));
+        channels = channels(contains(channels, '.csv'));
+        
         numEpochs = numel(epochs);
-        % numChannels = numel(channels);
+        numChannels = numel(channels);
         
+        fprintf("Found %i putative RBFMC data files.\n",numel(datafiles));
         fprintf('\t  <strong>Epochs:</strong> %i\n\t<strong>Channels:</strong> %i\n',numEpochs,numChannels);
-        
         fprintf('Building session cell structure...\n')
-        sessioncell = cell(numChannels, numEpochs);
+        sessioncell = cell(numEpochs, numChannels);
+        
         for e = 1:numEpochs
+            epoch_datafiles = datafiles(cellfun(@(x) strcmp(x,epochs{e}), {datafiles.folder}));
             for c = 1:numChannels
-                dirstr = join([mouse, date, time, epochs(e), channels(c)],'_') + ".csv";
-                sessioncell{c,e} = readtable(dirstr);
+                if contains(epoch_datafiles(c).name, channels)
+                    filestr = [epoch_datafiles(c).folder filesep epoch_datafiles(c).name];
+                    sessioncell{e,c} = readtable(filestr);
+                else
+                    fprintf(2,'\tEpoch %i does not have channel %s\n',e,extractBefore(channels{c},'.'));
+                end
             end
-            % --- make all lengths the same
-            chanLength = cellfun(@(x) size(x,1),sessioncell);
-            if numel(unique(chanLength)) ~= 1
-                fprintf(2,'\tChannel sample numbers unequal. Removing extra samples.\n')
-                minLength = min(chanLength(:,e));
-                for c = 1:numChannels
-                    sessioncell{c,e} = sessioncell{c,e}(1:minLength,:);
+            % --- make all lengths the same for just the light channels
+            chanLength = cellfun(@(x) size(x,1),sessioncell(e,1:numExcite));
+            if max(abs(diff(chanLength))) > 0
+                fprintf(2,'\tChannel sample numbers unequal. Removing %i extra samples.\n', max(abs(diff(chanLength))))
+                minLength = min(chanLength(1,:));
+                for c = 1:numExcite
+                    sessioncell{e,c} = sessioncell{e,c}(1:minLength,:);
                 end
             end
         end

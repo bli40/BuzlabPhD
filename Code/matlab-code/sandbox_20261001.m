@@ -310,3 +310,39 @@ title('Dopaminergic Response to Reward', 'FontSize',16);
 xline(0, '--r', 'HandleVisibility', 'off');
 
 linkaxes()
+
+%% edits to preprocess photometry
+numExcite = 3;
+datafiles = dir("*\*_*_*.csv");
+epochs = unique({datafiles.folder});
+channels = unique(split({datafiles.name},'_'));
+channels = channels(contains(channels, '.csv'));
+
+numEpochs = numel(epochs);
+numChannels = numel(channels);
+
+fprintf("Found %i putative RBFMC data files.\n",numel(datafiles));
+fprintf('\t  <strong>Epochs:</strong> %i\n\t<strong>Channels:</strong> %i\n',numEpochs,numChannels);
+fprintf('Building session cell structure...\n')
+sessioncell = cell(numEpochs, numChannels);
+
+for e = 1:numEpochs
+    epoch_datafiles = datafiles(cellfun(@(x) strcmp(x,epochs{e}), {datafiles.folder}));
+    for c = 1:numChannels
+        if contains(epoch_datafiles(c).name, channels)
+            filestr = [epoch_datafiles(c).folder filesep epoch_datafiles(c).name];
+            sessioncell{e,c} = readtable(filestr);
+        else
+            fprintf(2,'\tEpoch %i does not have channel %s\n',e,extractBefore(channels{c},'.'));
+        end
+    end
+    % --- make all lengths the same for just the light channels
+    chanLength = cellfun(@(x) size(x,1),sessioncell(e,1:numExcite));
+    if max(abs(diff(chanLength))) > 0
+        fprintf(2,'\tChannel sample numbers unequal. Removing %i extra samples.\n', max(abs(diff(chanLength))))
+        minLength = min(chanLength(1,:));
+        for c = 1:numExcite
+            sessioncell{e,c} = sessioncell{e,c}(1:minLength,:);
+        end
+    end
+end

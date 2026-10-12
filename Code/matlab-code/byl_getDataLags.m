@@ -1,102 +1,64 @@
-function [outputArg1,outputArg2] = byl_getDataLags(inputArg1,inputArg2)
-%byl_getDataLags - Function to get lags in order to synchronize multiple possible data types.
+function synclags = byl_getDataLags(basepath,varargin)
+%byl_getDataLags - Function to get lags in order to synchronize multiple
+%                  possible data types to concatenated main Intan
+%                  digitalin.dat
 %
 % USAGE
-%    synclags = byl_getDataLags(file1,file2,...,fileN)
+%   synclags = byl_getDataLags(file1,file2,...,fileN)
 %
 % INPUTS - note these are NOT name-value pairs... just raw values
-%    sessionPath    path to session directory ('*sess*')
-%    <options>      optional list of property-value pairs (see tables below)
+%   basepath        basepath to Intan digital file (digitalin.dat)
+%   varargin        other file to synchronize
+%   <options>       optional list of property-value pairs (see tables below)
 %
 %
 %   =========================================================================
 %     Properties    Values
 %   -------------------------------------------------------------------------
-%     'overwrite'   true if overwrite existing synced files. (default =
-%                   false)
-%     'verbose'     true if want to see all the files in the session.
-%                   (default = false)
-%     'dryrun'      true if you don't want to save data (default = false)
+%     'intanChan'   channel of random sync pulse on intan (default = 1)
+%     'otherChan'   channel of random sync pulse on other data type
+%                   (default = 1)
 %   =========================================================================
 %
 % OUTPUT
 %
-%    ripples        buzcode format .event. struct with the following fields
-%                   .timestamps        Nx2 matrix of start/stop times for
-%                                      each ripple
-%                   .detectorName      string ID for detector function used
-%                   .peaks             Nx1 matrix of peak power timestamps 
-%                   .stdev             standard dev used as threshold
-%                   .noise             candidate ripples that were
-%                                      identified as noise and removed
-%                   .peakNormedPower   Nx1 matrix of peak power values
-%                   .detectorParams    struct with input parameters given
-%                                      to the detector
+%    synclags       custom format struct with lags for each of the input
+%                   files
+%
 % SEE ALSO
 %
 %       ...
 %
 % 2026-10-06 by Brian Y. Li
+%% Parse inputs
+p = inputParser;
+p.addRequired('basepath', @(x) ischar(x) || isstring(x));
+p.addParameter('intanChan', 1, @(x) validateattributes(x, {'numeric'}, {'scalar','integer','positive'}));
+p.addParameter('otherChan', 1, @(x) validateattributes(x, {'numeric'}, {'scalar','integer','positive'}));
+p.parse(intanDigitalFile, varargin{:});
+options = p.Results;
 
 
-
-
-%Inputs:
-%   - file1, file2, etc. to synchronize. Lags are relative to file1.     
-%   
-%Returns:
-%   - [basename].synclags.mat file 
-
-% Extract barcode data from Intan file
+%% Extract barcode data from Intan file
+session = load([basepath '.session.mat']);
 srIntan = session.extracellular.sr;
-digitalIntan = 'digitalin.dat';
+digitalIntan = [basepath filesep 'digitalin.dat'];
 m = memmapfile(digitalIntan, 'Format', 'uint16', 'writable', false);
 raw_digital = m.Data;
 clear m
 
-tester = zeros(length(raw_digital), 1);    
 syncRandChan = 1;
 barcodeIntan = double(bitget(raw_digital,syncRandChan));
 tIntan = linspace(0,length(barcodeIntan)/srIntan,length(barcodeIntan));
 
-% Extract barcode data from Doric file
+% Extract barcode data from other input files
 digitalDoric = dir('*_0003.csv');
 dio = readtable(string(digitalDoric.name));
 srDoric = 1/mean(diff(dio.Time)); %Get samplingrate
 barcodeDoric = dio.DigitalCh2; %High/low signal
 tDoric = dio.Time;
 
-% Extract barcode data from video file
-mazevid = dir('*.mp4');
-v = VideoReader([mazevid.name]);
-h = v.Height;
-w = v.Width;
-v.CurrentTime = 0;
-srBlackfly = v.FrameRate;
-nFramesEst = max(1, ceil(v.Duration * v.FrameRate));
-barcodeBlackfly = nan(nFramesEst, 1, 'double');
 
-% circle mask
-mask = false(h,w);
-cx = 460; cy = 120;        % center (use your center)
-circleRadius = 5;                       % center circle radius
-[xg,yg] = meshgrid(1:w,1:h);
-maskCircle = (xg - cx).^2 + (yg - cy).^2 <= circleRadius^2;
-mask = mask | maskCircle;
-
-tic;
-n=0;
-while hasFrame(v)
-    n=n+1;
-    vidFrame = readFrame(v);
-    if ndims(vidFrame) == 3
-        vidFrame = vidFrame(:,:,1);
-    end
-    barcodeBlackfly(n) = sum(double(vidFrame(mask)),'all');
-end
-toc;
-barcodeBlackfly = barcodeBlackfly(~isnan(barcodeBlackfly));
-temp = barcodeBlackfly;
 
 %%
 barcodeBlackfly = temp;
@@ -105,9 +67,7 @@ barcodeBlackfly = barcodeBlackfly > cutoff;
 
 % Resample barcodeIntan to match barcodeDoric sampling rate
 downsampleRate = srIntan / srDoric;
-barcodeIntan_Downsampled = downsample(double(barcodeIntan), downsampleRate);
-tIntan_Downsampled = linspace(0, length(barcodeIntan) / srIntan, length(barcodeIntan_Downsampled));
-tDoric = linspace(0, length(barcodeDoric) / double(srDoric), length(barcodeDoric));
+barcodeDoric = interp1(tDoric, barcodeDoric, tIntan);
 
 % Compute cross-correlation
 [xcorrValues, lags] = xcorr(double(barcodeIntan_Downsampled), double(barcodeDoric));
