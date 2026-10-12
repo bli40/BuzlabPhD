@@ -195,50 +195,24 @@ if ~isempty(dir('*sess*'))
 end
 
 if size(subSess,1)>=1
-    if size(subSess,1)==1
-        fprintf(2,'No sub-sessions for today! Copying -dat and -xml files parent directory and renaming to match.\n');
-        try
-            copyfile(strcat(subSess.name, '\digitalin.dat'), basepath);
-        catch
-            fprintf('\tNo digitalin-dat file.\n');
-        end
-        
-        try
-            copyfile(strcat(subSess.name, '\time.dat'), basepath);
-        catch
-            fprintf('\tNo time-dat file.\n');
-        end
-        
-        try
-            copyfile(strcat(subSess.name, '\auxiliary.dat'),basepath);
-        catch
-            fprintf('\tNo auxiliary-dat file.\n');
-        end
-        
-        try
-            copyfile(strcat(subSess.name, '\amplifier.dat'),[basepath,filesep,basename,'.dat']);
-        catch
-            fprintf('\tNo amplifier-dat file.\n');
-        end
-    else
-        % --- Concatenate sessions       
-        bz_ConcatenateDats(pwd,0,1);
-    end
     
-    for n = 1:numel(subSess)
-        doricFiles = dir([subSess(n).name,filesep,'*.csv']);
-        for d = 1:numel(doricFiles)
-            copyfile([doricFiles(d).folder, filesep, doricFiles(d).name],basepath);
-        end
-        blackflyFiles = dir([subSess(n).name,filesep,'*.mp4']);
-        copyfile([blackflyFiles.folder, filesep, blackflyFiles.name],basepath);
-    end
+    % for n = 1:numel(subSess)
+    %     doricFiles = dir([subSess(n).name,filesep,'*.csv']);
+    %     for d = 1:numel(doricFiles)
+    %         copyfile([doricFiles(d).folder, filesep, doricFiles(d).name],basepath);
+    %     end
+    %     blackflyFiles = dir([subSess(n).name,filesep,'*.mp4']);
+    %     copyfile([blackflyFiles.folder, filesep, blackflyFiles.name],basepath);
+    % end
 
     if ~exist(strcat(basename,'.xml'),'file')
         delete(strcat(basename,'.xml'));% bring xml file
         copyfile(strcat(animalDir,'\global.xml'),strcat(basename,'.xml'),'f');
     end
-    
+
+    % --- Concatenate sessions       
+    % bz_ConcatenateDats(pwd,0,1);
+    byl_ConcatenateDats(pwd,0,1);
 
     % --- Loading metadata
     try
