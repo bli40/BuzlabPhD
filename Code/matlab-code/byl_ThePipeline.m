@@ -228,7 +228,6 @@ end
 load([basename, '.session.mat']);
 digitalIn = bz_getDigitalIn(pwd,'fs',session.extracellular.sr);
 
-
 %% (3) Extract -ppd files (python) --> WIP
 haveSessions = dir('*sess*');
 haveSessions = any(isfolder({haveSessions.name}));
@@ -256,7 +255,7 @@ end
 pyrunfile(pyscript,'inputFromMatlab',pwd);
 
 %% (3) preprocess fiber photometry
-byl_preprocessPhotometry(pwd,'show',true,'plottype',1,'saveMat',false,'sync',false);
+byl_preprocessPhotometry(pwd,'show',true,'plottype',1,'saveMat',false);
 
 %flip channels:
 f = figure(42);

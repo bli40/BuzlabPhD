@@ -52,7 +52,7 @@ basename = bz_BasenameFromBasepath(basepath);
 filenames = strcat(names, exts);
 
 fprintf('Syncing %i files with Intan digitalin.dat.\n', numel(otherfiles));
-fprintf(2,'\t<strong>%s</strong>\n',filenames{:});
+fprintf(2,'\t%s\n',filenames{:});
 
 %% Extract barcode data from Intan file
 load([basepath filesep basename '.session.mat']);
