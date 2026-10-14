@@ -149,17 +149,12 @@ synclags.timeShift_Doric = timeShift_Doric;
 synclags.timeShift_Blackfly = timeShift_Blackfly;
 save([basepath, filesep, basename, '.synclags.mat'], 'synclags');
 
-%% apply lags
-load([basename, '.photometry.mat']);
-load([basename, '.synclags.mat']);
-photometry.EI_time = photometry.EI_time + synclags.timeShift_Doric;
-photometry.E1_time = photometry.E1_time + synclags.timeShift_Doric;
-photometry.E2_time = photometry.E2_time + synclags.timeShift_Doric;
-photometry.synced = true;
-save([basename, '.photometry.mat'],'photometry');
+
 
 %% get behavioral performance
+basename = bz_BasenameFromBasepath(pwd);
 load([basename, '.session.mat']);
+load([basename, '.photometry.mat']);
 srIntan = session.extracellular.sr;
 digitalIntan = 'digitalin.dat';
 m = memmapfile(digitalIntan, 'Format', 'uint16', 'writable', false);
@@ -177,6 +172,18 @@ for i = 1:numel(channels2Extract)
 end
 timeIntan = linspace(0,length(digiIntan{trChan})/srIntan,length(digiIntan{trChan}));
 
+%% perform second regression to remove ACh signal from DA signal
+g1refit = fitlm(photometry.ROI1.red.dff, photometry.ROI1.green.dff);
+g1est = predict(g1refit,photometry.ROI1.red.dff);
+photometry.ROI1.green.dff = photometry.ROI1.green.dff - g1est;
+
+g2refit = fitlm(photometry.ROI2.red.dff, photometry.ROI2.green.dff);
+g2est = predict(g2refit,photometry.ROI2.red.dff);
+photometry.ROI2.green.dff = photometry.ROI2.green.dff - g2est;
+
+g3refit = fitlm(photometry.ROI3.red.dff, photometry.ROI3.green.dff);
+g3est = predict(g3refit,photometry.ROI3.red.dff);
+photometry.ROI3.green.dff = photometry.ROI3.green.dff - g3est;
 %%
 % Detect behavioral event onsets from the extracted digital channels
 npOnsets = find(diff(digiIntan{npChan}) > 0) + 1;
@@ -188,32 +195,106 @@ npOffsets = find(diff(digiIntan{npChan}) < 0) + 1;
 rwOffsets = find(diff(digiIntan{rwChan}) < 0) + 1;
 trOffsets = find(diff(digiIntan{trChan}) < 0) + 1;
 omOffsets = find(diff(digiIntan{npChan} & ~digiIntan{rwChan}) < 0) + 1;
-
+%%
 trialStarts = timeIntan(trOnsets);
+pumpstarts = timeIntan(rwOnsets);
 npWindows = timeIntan([npOnsets npOffsets]);
-attempts = byl_mergeEvents(npWindows, 2);
-rewards = timeIntan(rwOnsets)';
-omissions = nan(length(attempts),1);
-for i = 1:size(attempts,1)
-    if sum((rewards > attempts(i,1) & rewards < attempts(i,1)+3)) == 0
-        omissions(i) = attempts(i,1);
+
+attempts = [];
+for i = 1:numel(trialStarts)
+    if i < numel(trialStarts)
+        trialpokes = npWindows(npWindows(:,1) >= trialStarts(i) & npWindows(:,1) < trialStarts(i+1),:);
+    else
+        trialpokes = npWindows(npWindows(:,1) >= trialStarts(i),:);
+    end
+
+    if ~isempty(trialpokes)
+        attempts = [attempts; byl_mergeEvents(trialpokes,2)];
     end
 end
-omissions = omissions(~isnan(omissions));
-%% 
-rw_DA_NAc = byl_getETA(rewards, photometry.ROI1.E1dff, photometry.E1_time, 'duration',[-3 3], 'sampleRate',10000);
-rw_DA_CA1 = byl_getETA(rewards, photometry.ROI2.E1dff, photometry.E1_time, 'duration',[-3 3], 'sampleRate',10000);
-rw_DA_CA3 = byl_getETA(rewards, photometry.ROI3.E1dff, photometry.E1_time, 'duration',[-3 3], 'sampleRate',10000);
-
-om_DA_NAc = byl_getETA(omissions, photometry.ROI1.E1dff, photometry.E1_time, 'duration',[-3 3], 'sampleRate',10000);
-om_DA_CA1 = byl_getETA(omissions, photometry.ROI2.E1dff, photometry.E1_time, 'duration',[-3 3], 'sampleRate',10000);
-om_DA_CA3 = byl_getETA(omissions, photometry.ROI3.E1dff, photometry.E1_time, 'duration',[-3 3], 'sampleRate',10000);
+attempts = attempts(:,1);
 
 
 
-rw_ACh_NAc = byl_getETA(rewards, photometry.ROI1.E2dff, photometry.E2_time, 'duration',[-3 3], 'sampleRate',10000);
-rw_ACh_CA1 = byl_getETA(rewards, photometry.ROI2.E2dff, photometry.E2_time, 'duration',[-3 3], 'sampleRate',10000);
-rw_ACh_CA3 = byl_getETA(rewards, photometry.ROI3.E2dff, photometry.E2_time, 'duration',[-3 3], 'sampleRate',10000);
+%%
+% create a set of vectors that can be used to index to particular pokes or
+% trials
+[attempt_trial_num, attempt_poke_order, attempt_outcome] = deal(zeros(size(attempts)));
+
+for i = 1:numel(trialStarts)
+    if i < numel(trialStarts)
+        idx = attempts >= trialStarts(i) & attempts < trialStarts(i+1);
+    elseif i == numel(trialStarts)
+        idx = attempts >= trialStarts(i);
+    end
+    attempt_trial_num(idx) = i;
+    pokeorder = cumsum(idx);
+    attempt_poke_order(idx) = pokeorder(idx);
+end
+
+for i = 1:numel(attempts)
+    idx = find(pumpstarts>=attempts(i),1,'first');
+    if pumpstarts(idx)-attempts(i) <= 0.1
+        attempt_outcome(i) = 1;
+    end
+
+end
+
+rewarded = attempts(logical(attempt_outcome));
+omitted = attempts(~(attempt_outcome) & attempt_poke_order == 1);
+later = attempts(~(attempt_outcome) & attempt_poke_order ~= 1);
+unrewarded = attempts(~attempt_outcome);
+
+figure(1); clf; hold on;
+fig = gcf;
+fig.Units = 'pixels';
+fig.Position = [100 500 2300 600];
+axs = findall(gcf, 'Type', 'axes');
+for k = 1:numel(axs)
+    axs(k).LooseInset = axs(k).TightInset;
+end
+
+xline(trialStarts,'-','Color',repmat(0.5,1,3));
+plot(rewarded,0.1*ones(size(rewarded)),'g|','MarkerSize',20,'LineWidth',1.5)
+plot(omitted,0.1*ones(size(omitted)),'r|','MarkerSize',15,'LineWidth',1.5)
+plot(later,0.1*ones(size(later)),'k|','MarkerSize',10,'LineWidth',1.5)
+
+plot(pumpstarts,0.2*ones(size(pumpstarts)),'b|','MarkerSize',20,'LineWidth',2)
+ylim([0 0.3])
+
+%% rewarded vs. unrewarded
+rw_DA_NAc = byl_getETA(rewarded, photometry.ROI1.green.dff, photometry.ROI1.green.ts, 'duration',[-3 3], 'sampleRate',10000);
+rw_DA_CA1 = byl_getETA(rewarded, photometry.ROI2.green.dff, photometry.ROI2.green.ts, 'duration',[-3 3], 'sampleRate',10000);
+rw_DA_CA3 = byl_getETA(rewarded, photometry.ROI3.green.dff, photometry.ROI3.green.ts, 'duration',[-3 3], 'sampleRate',10000);
+
+om_DA_NAc = byl_getETA(unrewarded, photometry.ROI1.green.dff, photometry.ROI1.green.ts, 'duration',[-3 3], 'sampleRate',10000);
+om_DA_CA1 = byl_getETA(unrewarded, photometry.ROI2.green.dff, photometry.ROI2.green.ts, 'duration',[-3 3], 'sampleRate',10000);
+om_DA_CA3 = byl_getETA(unrewarded, photometry.ROI3.green.dff, photometry.ROI3.green.ts, 'duration',[-3 3], 'sampleRate',10000);
+
+rw_ACh_NAc = byl_getETA(rewarded, photometry.ROI1.red.dff, photometry.ROI1.red.ts, 'duration',[-3 3], 'sampleRate',10000);
+rw_ACh_CA1 = byl_getETA(rewarded, photometry.ROI2.red.dff, photometry.ROI2.red.ts, 'duration',[-3 3], 'sampleRate',10000);
+rw_ACh_CA3 = byl_getETA(rewarded, photometry.ROI3.red.dff, photometry.ROI3.red.ts, 'duration',[-3 3], 'sampleRate',10000);
+
+om_ACh_NAc = byl_getETA(unrewarded, photometry.ROI1.red.dff, photometry.ROI1.red.ts, 'duration',[-3 3], 'sampleRate',10000);
+om_ACh_CA1 = byl_getETA(unrewarded, photometry.ROI2.red.dff, photometry.ROI2.red.ts, 'duration',[-3 3], 'sampleRate',10000);
+om_ACh_CA3 = byl_getETA(unrewarded, photometry.ROI3.red.dff, photometry.ROI3.red.ts, 'duration',[-3 3], 'sampleRate',10000);
+
+%% first poke vs later pokes
+rw_DA_NAc = byl_getETA(attempts(attempt_poke_order == 1), photometry.ROI1.green.dff, photometry.ROI1.green.ts, 'duration',[-3 3], 'sampleRate',10000);
+rw_DA_CA1 = byl_getETA(attempts(attempt_poke_order == 1), photometry.ROI2.green.dff, photometry.ROI2.green.ts, 'duration',[-3 3], 'sampleRate',10000);
+rw_DA_CA3 = byl_getETA(attempts(attempt_poke_order == 1), photometry.ROI3.green.dff, photometry.ROI3.green.ts, 'duration',[-3 3], 'sampleRate',10000);
+
+om_DA_NAc = byl_getETA(attempts(attempt_poke_order ~= 1), photometry.ROI1.green.dff, photometry.ROI1.green.ts, 'duration',[-3 3], 'sampleRate',10000);
+om_DA_CA1 = byl_getETA(attempts(attempt_poke_order ~= 1), photometry.ROI2.green.dff, photometry.ROI2.green.ts, 'duration',[-3 3], 'sampleRate',10000);
+om_DA_CA3 = byl_getETA(attempts(attempt_poke_order ~= 1), photometry.ROI3.green.dff, photometry.ROI3.green.ts, 'duration',[-3 3], 'sampleRate',10000);
+
+rw_ACh_NAc = byl_getETA(attempts(attempt_poke_order == 1), photometry.ROI1.red.dff, photometry.ROI1.red.ts, 'duration',[-3 3], 'sampleRate',10000);
+rw_ACh_CA1 = byl_getETA(attempts(attempt_poke_order == 1), photometry.ROI2.red.dff, photometry.ROI2.red.ts, 'duration',[-3 3], 'sampleRate',10000);
+rw_ACh_CA3 = byl_getETA(attempts(attempt_poke_order == 1), photometry.ROI3.red.dff, photometry.ROI3.red.ts, 'duration',[-3 3], 'sampleRate',10000);
+
+om_ACh_NAc = byl_getETA(attempts(attempt_poke_order ~= 1), photometry.ROI1.red.dff, photometry.ROI1.red.ts, 'duration',[-3 3], 'sampleRate',10000);
+om_ACh_CA1 = byl_getETA(attempts(attempt_poke_order ~= 1), photometry.ROI2.red.dff, photometry.ROI2.red.ts, 'duration',[-3 3], 'sampleRate',10000);
+om_ACh_CA3 = byl_getETA(attempts(attempt_poke_order ~= 1), photometry.ROI3.red.dff, photometry.ROI3.red.ts, 'duration',[-3 3], 'sampleRate',10000);
 
 %% dopamine
 figure(88); clf; hold on;
@@ -242,9 +323,9 @@ y = [rw_DA_CA3.avg + rw_DA_CA3.sem, fliplr(rw_DA_CA3.avg - rw_DA_CA3.sem)];
 patch(x,y,cola(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
 
 legend('FontSize',12,'Location','northwest');
-xlabel('time relative to reward (s)','FontSize',20);
+xlabel('time relative to poke (s)','FontSize',20);
 ylabel('dF / F', 'FontSize',20);
-title('Dopaminergic Response to Reward', 'FontSize',16);
+title('Dopaminergic Response to Rewarded Poke', 'FontSize',16);
 set(gca,'TitleHorizontalAlignment','left');
 xline(0, '--r', 'HandleVisibility', 'off');
 
@@ -272,41 +353,74 @@ y = [om_DA_CA3.avg + om_DA_CA3.sem, fliplr(om_DA_CA3.avg - om_DA_CA3.sem)];
 patch(x,y,colb(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
 
 legend('FontSize',12,'Location','northwest');
-xlabel('time relative to omission (s)','FontSize',20);
+xlabel('time relative to poke (s)','FontSize',20);
 ylabel('dF / F', 'FontSize',20);
-title('Dopaminergic Response to Omission', 'FontSize',16);
+title('Dopaminergic Response to Unrewarded Poke', 'FontSize',16);
 set(gca,'TitleHorizontalAlignment','left');
 xline(0, '--r', 'HandleVisibility', 'off');
 
 linkaxes()
 %% acetylcholine responses
-subplot(1,2,2); cla; hold on;
-colb = copper(3);
+figure(89); clf; hold on;
+
+subplot(1,2,1); cla; hold on;
+cola = lines(4);
 e = 1;
-plot(rw_ACh_NAc.window, rw_ACh_NAc.avg, 'color', colb(e,:), 'LineWidth', 2,...
-    'DisplayName','NAc Dopamine');
+plot(rw_ACh_NAc.window, rw_ACh_NAc.avg, 'color', cola(e,:), 'LineWidth', 2,...
+    'DisplayName','NAc Acetylcholine');
 x = [rw_ACh_NAc.window, fliplr(rw_ACh_NAc.window)];
 y = [rw_ACh_NAc.avg + rw_ACh_NAc.sem, fliplr(rw_ACh_NAc.avg - rw_ACh_NAc.sem)];
+patch(x,y,cola(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
+
+e = 2;
+plot(rw_ACh_CA1.window, rw_ACh_CA1.avg, 'color', cola(e,:), 'LineWidth', 2,...
+    'DisplayName','CA1 Acetylcholine');
+x = [rw_ACh_CA1.window, fliplr(rw_ACh_CA1.window)];
+y = [rw_ACh_CA1.avg + rw_ACh_CA1.sem, fliplr(rw_ACh_CA1.avg - rw_ACh_CA1.sem)];
+patch(x,y,cola(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
+
+e = 3;
+plot(rw_ACh_CA3.window, rw_ACh_CA3.avg, 'color', cola(e,:), 'LineWidth', 2,...
+    'DisplayName','CA3 Acetylcholine');
+x = [rw_ACh_CA3.window, fliplr(rw_ACh_CA3.window)];
+y = [rw_ACh_CA3.avg + rw_ACh_CA3.sem, fliplr(rw_ACh_CA3.avg - rw_ACh_CA3.sem)];
+patch(x,y,cola(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
+
+legend('FontSize',12,'Location','northwest');
+xlabel('time relative to poke (s)','FontSize',20);
+ylabel('dF / F', 'FontSize',20);
+title('Cholinergic Response to Rewarded Poke', 'FontSize',16);
+set(gca,'TitleHorizontalAlignment','left');
+xline(0, '--r', 'HandleVisibility', 'off');
+
+subplot(1,2,2); cla; hold on;
+colb = lines(4);
+e = 1;
+plot(om_ACh_NAc.window, om_ACh_NAc.avg, 'color', colb(e,:), 'LineWidth', 2,...
+    'DisplayName','NAc Acetylcholine');
+x = [om_ACh_NAc.window, fliplr(om_ACh_NAc.window)];
+y = [om_ACh_NAc.avg + om_ACh_NAc.sem, fliplr(om_ACh_NAc.avg - om_ACh_NAc.sem)];
 patch(x,y,colb(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
 
 e = 2;
-plot(rw_ACh_CA1.window, rw_ACh_CA1.avg, 'color', colb(e,:), 'LineWidth', 2,...
-    'DisplayName','CA1 Dopamine');
-x = [rw_ACh_CA1.window, fliplr(rw_ACh_CA1.window)];
-y = [rw_ACh_CA1.avg + rw_ACh_CA1.sem, fliplr(rw_ACh_CA1.avg - rw_ACh_CA1.sem)];
+plot(om_ACh_CA1.window, om_ACh_CA1.avg, 'color', colb(e,:), 'LineWidth', 2,...
+    'DisplayName','CA1 Acetylcholine');
+x = [om_ACh_CA1.window, fliplr(om_ACh_CA1.window)];
+y = [om_ACh_CA1.avg + om_ACh_CA1.sem, fliplr(om_ACh_CA1.avg - om_ACh_CA1.sem)];
 patch(x,y,colb(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
 
 e = 3;
-plot(rw_ACh_CA3.window, rw_ACh_CA3.avg, 'color', colb(e,:), 'LineWidth', 2,...
-    'DisplayName','CA3 Dopamine');
-x = [rw_ACh_CA3.window, fliplr(rw_ACh_CA3.window)];
-y = [rw_ACh_CA3.avg + rw_ACh_CA3.sem, fliplr(rw_ACh_CA3.avg - rw_ACh_CA3.sem)];
+plot(om_ACh_CA3.window, om_ACh_CA3.avg, 'color', colb(e,:), 'LineWidth', 2,...
+    'DisplayName','CA3 Acetylcholine');
+x = [om_ACh_CA3.window, fliplr(om_ACh_CA3.window)];
+y = [om_ACh_CA3.avg + om_ACh_CA3.sem, fliplr(om_ACh_CA3.avg - om_ACh_CA3.sem)];
 patch(x,y,colb(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
 
-legend();
-xlabel('time relative to reward (s)','FontSize',20);
+legend('FontSize',12,'Location','northwest');
+xlabel('time relative to poke (s)','FontSize',20);
 ylabel('dF / F', 'FontSize',20);
-title('Dopaminergic Response to Reward', 'FontSize',16);
+title('Cholinergic Response to Unrewarded Poke', 'FontSize',16);
+set(gca,'TitleHorizontalAlignment','left');
 xline(0, '--r', 'HandleVisibility', 'off');
 
 linkaxes()
