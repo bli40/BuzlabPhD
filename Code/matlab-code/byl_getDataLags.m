@@ -1,4 +1,4 @@
-function synclags = byl_getDataLags(basepath,otherfiles, varargin)
+function synclags = byl_getDataLags(basepath,intanChan,otherfiles,otherChan,varargin)
 %byl_getDataLags - Function to get lags in order to synchronize multiple
 %                  possible data types to concatenated main Intan
 %                  digitalin.dat
@@ -35,16 +35,19 @@ function synclags = byl_getDataLags(basepath,otherfiles, varargin)
 %% Parse inputs
 p = inputParser;
 p.addRequired('basepath', @(x) ischar(x) || isstring(x));
+p.addRequired('intanChan', @(x) validateattributes(x, {'numeric'}, {'scalar','integer','positive'}));
 p.addRequired('otherFiles', @(x) ischar(x) || isstring(x) || iscellstr(x));
-p.addParameter('intanChan', 1, @(x) validateattributes(x, {'numeric'}, {'scalar','integer','positive'}));
-p.addParameter('otherChan', 1, @(x) validateattributes(x, {'numeric'}, {'scalar','integer','positive'}));
+p.addRequired('otherChan', @(x) validateattributes(x, {'numeric'}, {'scalar','integer','positive'}));
 p.addParameter('plotbool', true, @islogical);
-p.parse(basepath, otherfiles, varargin{:});
+p.addParameter('method','crosscorr',@(x) ischar(x) || isstring(x));
+p.parse(basepath, intanChan, otherfiles, otherChan, varargin{:});
 
 otherfiles = string(p.Results.otherFiles);
 intanChan = p.Results.intanChan;
 otherChan = p.Results.otherChan;
 plotbool = p.Results.plotbool;
+method = p.Results.method;
+
 basepath = p.Results.basepath;
 basename = bz_BasenameFromBasepath(basepath);
 
@@ -53,6 +56,38 @@ filenames = strcat(names, exts);
 
 fprintf('Syncing %i files with Intan digitalin.dat.\n', numel(otherfiles));
 fprintf(2,'\t%s\n',filenames{:});
+
+%% If session didn't have proper random sync pulse
+switch method
+    case 'crosscorr'
+        fprintf('Synchronizing using cross-correlogram peak in random sync pulses.\n');
+    case 'framegrab'
+        fprintf('Synchronizing using timing of first frame grab.\n');
+        load([basepath filesep basename '.session.mat']);
+        srIntan = session.extracellular.sr;
+        digitalIntan = [basepath filesep 'digitalin.dat'];
+        m = memmapfile(digitalIntan, 'Format', 'uint16', 'writable', false);
+        raw_digital = m.Data;
+        clear m
+
+        barcodeIntan = double(bitget(raw_digital,intanChan));
+        tIntan = linspace(0,length(barcodeIntan)/srIntan,length(barcodeIntan));
+        
+        frameGrabTimes = tIntan(logical([diff(barcodeIntan) == 1; 0]));
+        framePeriod = mean(diff(frameGrabTimes));
+
+        if frameGrabTimes(1) > framePeriod
+            synclags = frameGrabTimes(1);
+            fprintf('Lag %i\n',synclags);
+            return
+
+        elseif frameGrabTimes <= framePeriod
+            fprintf(2,'\tCannot determine when first frame is grabbed. Synchronization impossible.\n');
+            return
+        end
+    otherwise
+        error('Unknown synchronization method: %s', method);
+end
 
 %% Extract barcode data from Intan file
 load([basepath filesep basename '.session.mat']);

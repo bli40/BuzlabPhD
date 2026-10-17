@@ -49,11 +49,11 @@ warning('this function is under development and may not work... yet. currently o
 
 % Default values
 p = inputParser;
-addParameter(p,'source','rbfmc',@isstr)
+addParameter(p,'source','rbfmc',@(x) ischar(s) || isstring(x));
 addParameter(p,'numEx',3,@isnumeric)
 addParameter(p,'show',false,@islogical)
 addParameter(p,'saveMat',false,@islogical)
-addParameter(p,'sync',true,@islogical)
+addParameter(p,'sync','crosscorr', @(x) ischar(x) || isstring(x));
 addParameter(p,'plotType',2,@isnumeric)
 addParameter(p,'intanSyncChan',1,@isnumeric)
 addParameter(p,'otherSyncChan',1,@isnumeric)
@@ -151,20 +151,18 @@ roi_var_names = ["mc","dff","zs","ts"];
 digi = table(Size=[digi_sz1 digi_sz2],VariableTypes=["doublenan","doublenan"],VariableNames=["ch","ts"]);
 
 %% Synchronize Time 
-if sync
-    syncFileInd = numEx; % Assumes that digital in is the first channel(s) extracted and that names are 0-indexed.
-    listing = dir(['*\*' + string(syncFileInd) + ".csv"]);
-    filelist = fullfile({listing.folder}, {listing.name}).';
-    synclags = byl_getDataLags(pwd,filelist,'plotbool',false);
-    
-end
+syncFileInd = numEx; % Assumes that digital in is the first channel(s) extracted and that names are 0-indexed.
+listing = dir(['*\*' + string(syncFileInd) + ".csv"]);
+filelist = fullfile({listing.folder}, {listing.name}).';
+synclags = byl_getDataLags(pwd,intanSyncChan, filelist,otherSyncChan,'method',sync,'plotbool',false);
+
 
 %% initiate preprocessing
 for e = 1:numEpochs
-    EI = sessioncell{e,1};
-    E1 = sessioncell{e,2};
-    E2 = sessioncell{e,3};
-    CH = sessioncell{e,4};
+    for i = 1:numEx
+        EX{i} = sessioncell{e,i};
+    end
+    CH = sessioncell{e,numEx+1};
 
     if show && plotType == 1
         % --- plot ROIs and traces
@@ -213,9 +211,13 @@ for e = 1:numEpochs
     
     % De-Noising
     fprintf('De-noising - 10 hz bandpass filtering...\n')
-    fs = 30; 
-    fc = 10;
+
+    fs = round(1/mean(diff(EX{1}.Time))); 
+    fc = 20;
     [b, a] = butter(2,fc/(fs/2));
+    for i = 1:numEx
+        
+    end
     
     g1dn = filtfilt(b,a,E1.ROI01);
     r1dn = filtfilt(b,a,E2.ROI01);
@@ -268,6 +270,16 @@ for e = 1:numEpochs
     r3dt = r3dn - r3fit1(E2.Time);
     i3dt = i3dn - i3fit1(EI.Time);
     
+    % g1dt = g1dn ./ g1fit1(E1.Time); 
+    % r1dt = r1dn ./ r1fit1(E2.Time);
+    % i1dt = i1dn ./ i1fit1(EI.Time);
+    % g2dt = g2dn ./ g2fit1(E1.Time);
+    % r2dt = r2dn ./ r2fit1(E2.Time);
+    % i2dt = i2dn ./ i2fit1(EI.Time);
+    % g3dt = g3dn ./ g3fit1(E1.Time);
+    % r3dt = r3dn ./ r3fit1(E2.Time);
+    % i3dt = i3dn ./ i3fit1(EI.Time);
+
     if show && plotType == 1
         f2 = figure(); clf; hold on;
         t2 = tiledlayout(3,1);
@@ -451,7 +463,7 @@ for e = 1:numEpochs
     r2dff = 100*(r2mc./r2fit1(E2.Time));
     g3dff = 100*(g3mc./g3fit1(E1.Time));
     r3dff = 100*(r3mc./r3fit1(E2.Time));
-    
+
     % --- z-score
     fprintf('Normalization - z-score...\n')
     
@@ -657,6 +669,8 @@ if saveMat
     photometry.ROI3.iso = iso2;
 
     photometry.digital = digi;
+    photometry.epochs.photom = epoch_photom_len;
+    photometry.epochs.digi = epoch_digi_len;
     
     basepath = pwd;
     [~, basename, ~] = fileparts(pwd);

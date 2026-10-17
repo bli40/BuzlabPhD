@@ -210,10 +210,6 @@ if size(subSess,1)>=1
         copyfile(strcat(animalDir,'\global.xml'),strcat(basename,'.xml'),'f');
     end
 
-    % --- Concatenate sessions       
-    % bz_ConcatenateDats(pwd,0,1);
-    byl_ConcatenateDats(pwd,0,1);
-
     % --- Loading metadata
     try
         session = sessionTemplate(pwd,'showGUI',false); % 
@@ -222,6 +218,11 @@ if size(subSess,1)>=1
     catch
         warning('it seems that CellExplorer is not on your path');
     end
+
+    % --- Concatenate sessions       
+    % bz_ConcatenateDats(pwd,0,1);
+    byl_ConcatenateDats(pwd,0,1);
+
 end    
 
 %% (2.5) process digitalin files
@@ -255,7 +256,8 @@ end
 pyrunfile(pyscript,'inputFromMatlab',pwd);
 
 %% (3) preprocess fiber photometry
-byl_preprocessPhotometry(pwd,'show',true,'plottype',1,'saveMat',true);
+byl_preprocessPhotometry(pwd,'intanSyncChan',1,'otherSyncChan',1, ...
+    'numEx',2,'sync','crosscorr','show',true,'plottype',2,'saveMat',true);
 
 %flip channels:
 f = figure(42);

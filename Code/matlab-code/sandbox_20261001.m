@@ -152,6 +152,7 @@ save([basepath, filesep, basename, '.synclags.mat'], 'synclags');
 
 
 %% get behavioral performance
+clear all; close all;
 basename = bz_BasenameFromBasepath(pwd);
 load([basename, '.session.mat']);
 load([basename, '.photometry.mat']);
@@ -184,6 +185,7 @@ photometry.ROI2.green.dff = photometry.ROI2.green.dff - g2est;
 g3refit = fitlm(photometry.ROI3.red.dff, photometry.ROI3.green.dff);
 g3est = predict(g3refit,photometry.ROI3.red.dff);
 photometry.ROI3.green.dff = photometry.ROI3.green.dff - g3est;
+disp('2nd regression done.')
 %%
 % Detect behavioral event onsets from the extracted digital channels
 npOnsets = find(diff(digiIntan{npChan}) > 0) + 1;
@@ -214,6 +216,9 @@ for i = 1:numel(trialStarts)
 end
 attempts = attempts(:,1);
 
+% attempts = attempts(attempts <= photometry.ROI1.iso.ts(photometry.epochs.photom(2)));
+% trialStarts = trialStarts(trialStarts <= photometry.ROI1.iso.ts(photometry.epochs.photom(2)));
+% pumpstarts = pumpstarts(pumpstarts <= photometry.ROI1.iso.ts(photometry.epochs.photom(2)));
 
 
 %%
