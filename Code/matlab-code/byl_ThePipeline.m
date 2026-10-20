@@ -257,7 +257,7 @@ pyrunfile(pyscript,'inputFromMatlab',pwd);
 
 %% (3) preprocess fiber photometry
 byl_preprocessPhotometry(pwd,'intanSyncChan',1,'otherSyncChan',1, ...
-    'numEx',2,'sync','crosscorr','show',true,'plottype',2,'saveMat',true);
+    'sync','crosscorr','show',true,'plottype',1,'saveMat',true);
 
 %flip channels:
 f = figure(42);

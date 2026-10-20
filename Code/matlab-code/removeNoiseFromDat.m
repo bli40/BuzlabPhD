@@ -17,7 +17,7 @@ function removeNoiseFromDat(basepath,varargin)
 %
 %% Defaults and Parms
 p = inputParser;
-addParameter(p,'basepath',pwd,@isdir);
+addParameter(p,'basepath',pwd,@isfolder);
 addParameter(p,'ch','all');
 addParameter(p,'method','subtractMedian',@ischar);
 addParameter(p,'keepDat',true,@islogical);

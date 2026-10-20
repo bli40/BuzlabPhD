@@ -144,9 +144,9 @@ epoch_digi_len = cumsum(epoch_digi_len);
 photom_sz2 = session_szs{1,1}(2);
 digi_sz2 = session_szs{1,end}(2);
 
-vartypes = repmat("doublenan",1,photom_sz2);
-roi_var_names = ["mc","dff","zs","ts"];
-[green1,green2,green3,red1,red2,red3] = deal(table(Size=[photom_sz1 photom_sz2],VariableTypes=vartypes,VariableNames=roi_var_names));
+vartypes = repmat("doublenan",1,5);
+roi_var_names = ["dt","mc","dff","zs","ts"];
+[green1,green2,green3,red1,red2,red3] = deal(table(Size=[photom_sz1 5],VariableTypes=vartypes,VariableNames=roi_var_names));
 [iso1, iso2, iso3] = deal(table(Size=[photom_sz1 2],VariableTypes=["doublenan","doublenan"],VariableNames=["dt","ts"]));
 digi = table(Size=[digi_sz1 digi_sz2],VariableTypes=["doublenan","doublenan"],VariableNames=["ch","ts"]);
 
@@ -159,10 +159,10 @@ synclags = byl_getDataLags(pwd,intanSyncChan, filelist,otherSyncChan,'method',sy
 
 %% initiate preprocessing
 for e = 1:numEpochs
-    for i = 1:numEx
-        EX{i} = sessioncell{e,i};
-    end
-    CH = sessioncell{e,numEx+1};
+    EI = sessioncell{e,1};
+    E1 = sessioncell{e,2};
+    E2 = sessioncell{e,3};
+    CH = sessioncell{e,4};
 
     if show && plotType == 1
         % --- plot ROIs and traces
@@ -210,14 +210,10 @@ for e = 1:numEpochs
     end
     
     % De-Noising
-    fprintf('De-noising - 10 hz bandpass filtering...\n')
-
-    fs = round(1/mean(diff(EX{1}.Time))); 
-    fc = 20;
+    fprintf('De-noising - 12 hz bandpass filtering...\n')
+    fs = 30; 
+    fc = 12;
     [b, a] = butter(2,fc/(fs/2));
-    for i = 1:numEx
-        
-    end
     
     g1dn = filtfilt(b,a,E1.ROI01);
     r1dn = filtfilt(b,a,E2.ROI01);
@@ -568,11 +564,13 @@ for e = 1:numEpochs
     end
     % temporary structure
     green1.dff(epoch_photom_len(e)+1:epoch_photom_len(e+1),:) = g1dff;
+    green1.dt(epoch_photom_len(e)+1:epoch_photom_len(e+1),:) = g1dt;
     green1.mc(epoch_photom_len(e)+1:epoch_photom_len(e+1),:) = g1mc;
     green1.zs(epoch_photom_len(e)+1:epoch_photom_len(e+1),:) = g1z;
     green1.ts(epoch_photom_len(e)+1:epoch_photom_len(e+1),:) = E1.Time + synclags(e);
 
     red1.dff(epoch_photom_len(e)+1:epoch_photom_len(e+1),:) = r1dff;
+    red1.dt(epoch_photom_len(e)+1:epoch_photom_len(e+1),:) = r1dt;
     red1.mc(epoch_photom_len(e)+1:epoch_photom_len(e+1),:) = r1mc;
     red1.zs(epoch_photom_len(e)+1:epoch_photom_len(e+1),:) = r1z;
     red1.ts(epoch_photom_len(e)+1:epoch_photom_len(e+1),:) = E2.Time + synclags(e);
@@ -581,11 +579,13 @@ for e = 1:numEpochs
     iso1.ts(epoch_photom_len(e)+1:epoch_photom_len(e+1),:) = EI.Time + synclags(e);
 
     green2.dff(epoch_photom_len(e)+1:epoch_photom_len(e+1)) = g2dff;
+    green2.dt(epoch_photom_len(e)+1:epoch_photom_len(e+1),:) = g2dt;
     green2.mc(epoch_photom_len(e)+1:epoch_photom_len(e+1)) = g2mc;
     green2.zs(epoch_photom_len(e)+1:epoch_photom_len(e+1)) = g2z;
     green2.ts(epoch_photom_len(e)+1:epoch_photom_len(e+1)) = E1.Time + synclags(e);
 
     red2.dff(epoch_photom_len(e)+1:epoch_photom_len(e+1)) = r2dff;
+    red2.dt(epoch_photom_len(e)+1:epoch_photom_len(e+1),:) = r2dt;
     red2.mc(epoch_photom_len(e)+1:epoch_photom_len(e+1)) = r2mc;
     red2.zs(epoch_photom_len(e)+1:epoch_photom_len(e+1)) = r2z;
     red2.ts(epoch_photom_len(e)+1:epoch_photom_len(e+1)) = E2.Time + synclags(e);
@@ -594,11 +594,13 @@ for e = 1:numEpochs
     iso2.ts(epoch_photom_len(e)+1:epoch_photom_len(e+1)) = EI.Time + synclags(e);
 
     green3.dff(epoch_photom_len(e)+1:epoch_photom_len(e+1)) = g3dff;
+    green3.dt(epoch_photom_len(e)+1:epoch_photom_len(e+1),:) = g3dt;
     green3.mc(epoch_photom_len(e)+1:epoch_photom_len(e+1)) = g3mc;
     green3.zs(epoch_photom_len(e)+1:epoch_photom_len(e+1)) = g3z;
     green3.ts(epoch_photom_len(e)+1:epoch_photom_len(e+1)) = E1.Time + synclags(e);
 
     red3.dff(epoch_photom_len(e)+1:epoch_photom_len(e+1)) = r3dff;
+    red3.dt(epoch_photom_len(e)+1:epoch_photom_len(e+1),:) = r3dt;
     red3.mc(epoch_photom_len(e)+1:epoch_photom_len(e+1)) = r3mc;
     red3.zs(epoch_photom_len(e)+1:epoch_photom_len(e+1)) = r3z;
     red3.ts(epoch_photom_len(e)+1:epoch_photom_len(e+1)) = E2.Time + synclags(e);

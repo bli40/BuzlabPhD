@@ -81,10 +81,12 @@ switch method
             fprintf('Lag %i\n',synclags);
             return
 
-        elseif frameGrabTimes <= framePeriod
+        else 
             fprintf(2,'\tCannot determine when first frame is grabbed. Synchronization impossible.\n');
+            synclags = nan;
             return
         end
+         
     otherwise
         error('Unknown synchronization method: %s', method);
 end

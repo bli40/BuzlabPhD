@@ -197,7 +197,7 @@ npOffsets = find(diff(digiIntan{npChan}) < 0) + 1;
 rwOffsets = find(diff(digiIntan{rwChan}) < 0) + 1;
 trOffsets = find(diff(digiIntan{trChan}) < 0) + 1;
 omOffsets = find(diff(digiIntan{npChan} & ~digiIntan{rwChan}) < 0) + 1;
-%%
+
 trialStarts = timeIntan(trOnsets);
 pumpstarts = timeIntan(rwOnsets);
 npWindows = timeIntan([npOnsets npOffsets]);
@@ -221,7 +221,7 @@ attempts = attempts(:,1);
 % pumpstarts = pumpstarts(pumpstarts <= photometry.ROI1.iso.ts(photometry.epochs.photom(2)));
 
 
-%%
+
 % create a set of vectors that can be used to index to particular pokes or
 % trials
 [attempt_trial_num, attempt_poke_order, attempt_outcome] = deal(zeros(size(attempts)));
@@ -465,3 +465,28 @@ for e = 1:numEpochs
         end
     end
 end
+
+
+%%
+
+%% Photometry Scroller
+livePlot = true;
+basename = bz_BasenameFromBasepath(pwd);
+load([basename, '.photometry.mat']);
+YData = [photometry.ROI1.green.dff photometry.ROI2.green.dff photometry.ROI3.green.dff];
+XData = [photometry.ROI1.green.ts photometry.ROI2.green.ts photometry.ROI3.green.ts];
+
+quickTimeSeriesScroller(XData, YData, ...
+    'secondAxisInds',1, ...
+    'timeSeriesNames',{'NAc','R-CA1','L-CA3'}, ...
+    'events',{unrewarded,pumpstarts}, ...
+    'eventColors',{'r','b'}, ...
+    'eventNames',{'unrewarded','pumpstarts'});
+
+%% PSD of fiber
+[pxx,f] = pspectrum(photometry.ROI1, pyrLFP.samplingRate,'FrequencyLimits',[0 625]);
+plot(f, pow2db(pxx),'-k','LineWidth',1.5,'DisplayName',sprintf('full sess'));
+legend('FontSize',15);
+title(sprintf('%s - epoch PSD',basename),'Interpreter','none','FontSize',15);
+xlabel('frequency (Hz)','FontSize',15);
+ylabel('power (dB)','FontSize',15);
