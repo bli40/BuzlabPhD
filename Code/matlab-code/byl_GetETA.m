@@ -100,8 +100,8 @@ tSampMatrix = tSampMatrix(keepEvent,:);
 
 
 % Event-triggered average
-eta_avg = mean(etaMatrix, 1);
-eta_std = std(etaMatrix, 0, 1);
+eta_avg = mean(etaMatrix, 1, 'omitnan');
+eta_std = std(etaMatrix, 0, 1, 'omitnan');
 eta_sem = eta_std / sqrt(size(etaMatrix,1));
 eta = struct('avg',eta_avg, ...
              'std',eta_std, ...

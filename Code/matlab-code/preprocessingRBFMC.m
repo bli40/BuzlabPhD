@@ -46,7 +46,7 @@ r1 = plot(E2.Time, E2.ROI01,'-', 'LineWidth',lw,'Color',col(2,:));
 
 % --- region 2
 nt2 = nexttile(2); hold on; grid on;
-title("ROI 2 (empty)");
+title("ROI 2 (CA1)");
 nt2.TitleHorizontalAlignment = 'left';
 % xlabel("time (s)");
 xticklabels('');
@@ -59,7 +59,7 @@ r2 = plot(E2.Time, E2.ROI02,'-', 'LineWidth',lw,'Color',col(2,:));
 
 % --- region 3
 nt3 = nexttile(3); hold on; grid on;
-title("ROI 3 (HPC)");
+title("ROI 3 (CA3)");
 nt3.TitleHorizontalAlignment = 'left';
 xlabel("time (s)");
 ylabel("CMOS Intensity");
@@ -338,21 +338,87 @@ r3.YData = r3dff;
 ylabel(nt3, '\DeltaF / F');
 
 figure(4);
-t2 = tiledlayout(1,2,'TileSpacing','loose','Padding','loose');
+t2 = tiledlayout(1,3,'TileSpacing','loose','Padding','loose');
 title(t2,'gDA vs rACh','FontSize',30);
-nt = nexttile(1);
-plot(g1dff, r1dff,'k.','MarkerSize',5);
-title(nt, 'ROI-1: Nucleus Accumbens','FontSize',20);
-nt.TitleHorizontalAlignment = 'left';
-xlabel('gDA3h signal','Color',col(5,:),'FontSize',20);
-ylabel('rACh1.7 signal','Color',col(2,:),'FontSize',20);
+figure(); hold on;
+t2 = tiledlayout(1,3,'TileSpacing','loose','Padding','loose');
+title(t2,'Green vs Red Signal','FontSize',30);
 
-nt = nexttile(2);
-plot(g3dff, r3dff,'k.','MarkerSize',5);
-title(nt, 'ROI-3: Hippocampus','FontSize',20);
+nt = nexttile(1); hold on;
+bleedthrufit1 = fitlm(g1dff, r1dff);
+xplot = linspace(min(g1dff), max(g1dff), 200)';
+y1 = predict(bleedthrufit1, xplot);
+plot(g1dff, r1dff,'k.','MarkerSize',5);
+plot(xplot,y1,'Color',[0.5 0.5 0.5],'LineWidth',2);
+title(nt, 'ROI-1','FontSize',20);
 nt.TitleHorizontalAlignment = 'left';
-xlabel('gDA3h signal','Color',col(5,:),'FontSize',20);
-ylabel('rACh1.7 signal','Color',col(2,:),'FontSize',20);
+xlabel('green signal','Color',col(5,:),'FontSize',20);
+ylabel('red signal','Color',col(2,:),'FontSize',20);
+r1bt = bleedthrufit1.Rsquared.Ordinary;
+ax = gca;
+text(ax, 0.02, 0.98, sprintf('Green R^2 = %.3f', r1bt), ...
+    'Units', 'normalized', ...
+    'VerticalAlignment', 'top', ...
+    'HorizontalAlignment', 'left', ...
+    'Color', [0 0 0], ...
+    'FontWeight', 'bold', ...
+    'BackgroundColor', 'w', ...
+    'Margin', 2);
+
+nt = nexttile(2); hold on;
+bleedthrufit2 = fitlm(g2dff, r2dff);
+xplot = linspace(min(g2dff), max(g2dff), 200)';
+y1 = predict(bleedthrufit2, xplot);
+plot(g2dff, r2dff,'k.','MarkerSize',5);
+plot(xplot,y1,'Color',[0.5 0.5 0.5],'LineWidth',2);
+title(nt, 'ROI-2','FontSize',20);
+nt.TitleHorizontalAlignment = 'left';
+xlabel('green signal','Color',col(5,:),'FontSize',20);
+ylabel('red signal','Color',col(2,:),'FontSize',20);
+r2bt = bleedthrufit2.Rsquared.Ordinary;
+ax = gca;
+text(ax, 0.02, 0.98, sprintf('Green R^2 = %.3f', r2bt), ...
+    'Units', 'normalized', ...
+    'VerticalAlignment', 'top', ...
+    'HorizontalAlignment', 'left', ...
+    'Color', [0 0 0], ...
+    'FontWeight', 'bold', ...
+    'BackgroundColor', 'w', ...
+    'Margin', 2);
+
+nt = nexttile(3); hold on;
+bleedthrufit3 = fitlm(g3dff, r3dff);
+xplot = linspace(min(g3dff), max(g3dff), 200)';
+y1 = predict(bleedthrufit3, xplot);
+plot(g3dff, r3dff,'k.','MarkerSize',5);
+plot(xplot,y1,'Color',[0.5 0.5 0.5],'LineWidth',2);
+title(nt, 'ROI-3','FontSize',20);
+nt.TitleHorizontalAlignment = 'left';
+xlabel('green signal','Color',col(5,:),'FontSize',20);
+ylabel('red signal','Color',col(2,:),'FontSize',20);
+r3bt = bleedthrufit3.Rsquared.Ordinary;
+ax = gca;
+text(ax, 0.02, 0.98, sprintf('Green R^2 = %.3f', r3bt), ...
+    'Units', 'normalized', ...
+    'VerticalAlignment', 'top', ...
+    'HorizontalAlignment', 'left', ...
+    'Color', [0 0 0], ...
+    'FontWeight', 'bold', ...
+    'BackgroundColor', 'w', ...
+    'Margin', 2);
+% nt = nexttile(1);
+% plot(g1dff, r1dff,'k.','MarkerSize',5);
+% title(nt, 'ROI-1: Nucleus Accumbens','FontSize',20);
+% nt.TitleHorizontalAlignment = 'left';
+% xlabel('gDA3h signal','Color',col(5,:),'FontSize',20);
+% ylabel('rACh1.7 signal','Color',col(2,:),'FontSize',20);
+% 
+% nt = nexttile(2);
+% plot(g3dff, r3dff,'k.','MarkerSize',5);
+% title(nt, 'ROI-3: Hippocampus','FontSize',20);
+% nt.TitleHorizontalAlignment = 'left';
+% xlabel('gDA3h signal','Color',col(5,:),'FontSize',20);
+% ylabel('rACh1.7 signal','Color',col(2,:),'FontSize',20);
 
 figure(1);
 %
@@ -462,4 +528,4 @@ photometry.E2_time = E2.Time;
 basepath = pwd;
 [~, basename, ~] = fileparts(pwd);
 
-save([basepath filesep basename '.photometry.mat'],'photometry');
+% save([basepath filesep basename '.photometry.mat'],'photometry');

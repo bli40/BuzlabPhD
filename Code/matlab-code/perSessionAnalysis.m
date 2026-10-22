@@ -72,8 +72,8 @@ fileTable = table(hasConc, hasSync, hasMat, whichRegions, numEpochs, ...
     'VariableNames',{'hasConc','hasSync','hasMat','whichRegions','numEpochs'});
 
 %% Pick Session
-% sesh = 29;
-% cd(sessionPaths{sesh});
+sesh = 5;
+cd(sessionPaths{sesh});
 % [~,name,~] = fileparts(sessionPaths{sesh});
 thisdir = dir('*.session.mat');
 [~,name,~] = fileparts(thisdir.folder);
@@ -306,7 +306,7 @@ for r = 1:numel(possibleRegions)
     else
         photomIdx = photom{region}.concPhotom;
         
-        plot(photomIdx.timestamps, photomIdx.grabDA_z, ...
+        plot(photomIdx.timestamps, photomIdx.grabDA_df, ...
             'color',[0.5 0.5 0.5],'LineWidth',0.5)
     
         for ep = 1:numel(photomIdx.epochNames)
@@ -328,7 +328,7 @@ for r = 1:numel(possibleRegions)
         
         xlim(XL); ylim(YL);
         xticklabels('')
-        ylabel(sprintf('%s (z-score)',possibleRegions{r}))
+        ylabel(sprintf('%s (dF / F_0)',possibleRegions{r}))
         title(sprintf('%s Photometry Session',possibleRegions{r}));
     end
 
@@ -357,12 +357,12 @@ for r = 1:numel(possibleRegions)
     else
        
         photomIdx = photom{region}.concPhotom;
-        data = photomIdx.grabDA_z;
+        data = photomIdx.grabDA_df;
         timestamps = photomIdx.timestamps;
 
         for e = 1:numel(events)
             eta{r,e} = byl_getETA(events{e},data,timestamps, ...
-                'frequency',130,'normalization','zscore','durations',durations);
+                'sampleRate',130,'normalization','zscore','durations',durations);
             plot(eta{r,e}.window, eta{r,e}.avg, 'color', blue(e,:), 'LineWidth', 2,...
                 'DisplayName',sprintf('%s (%i)',events2plot{e},numel(events{e})));
             x1 = [eta{r,e}.window, fliplr(eta{r,e}.window)];
@@ -370,7 +370,7 @@ for r = 1:numel(possibleRegions)
             patch(x1,y,blue(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');   
         end
         xlabel('Time from event (s)');
-        ylabel('Fluorescence (z-score)');
+        ylabel('Fluorescence (dF / F_0)');
         title(sprintf('Ripples'));
         grid on;
         legend('location','best','FontSize',6);
@@ -414,12 +414,12 @@ for r = 1:numel(possibleRegions)
     else
         
         photomIdx = photom{region}.concPhotom;
-        data = photomIdx.grabDA_z;
+        data = photomIdx.grabDA_df;
         timestamps = photomIdx.timestamps;
 
         for e = 1:numel(events)
             eta{r,e} = byl_getETA(events{e},data,timestamps, ...
-                'frequency',130,'normalization','zscore','durations',durations);
+                'sampleRate',130,'normalization','zscore','durations',durations);
             plot(eta{r,e}.window, eta{r,e}.avg, 'color', yellow(e,:), 'LineWidth', 2,...
                 'DisplayName',sprintf('%s (%i)',events2plot{e},numel(events{e})));
             x1 = [eta{r,e}.window, fliplr(eta{r,e}.window)];
@@ -427,7 +427,7 @@ for r = 1:numel(possibleRegions)
             patch(x1,y,yellow(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');   
         end
         xlabel('Time from event (s)');
-        ylabel('Fluorescence (z-score)');
+        ylabel('Fluorescence (dF / F_0)');
         title('Nosepokes');
         grid on;
         legend('location','best','FontSize',6);
@@ -471,12 +471,12 @@ for r = 1:numel(possibleRegions)
     else
 
         photomIdx = photom{region}.concPhotom;
-        data = photomIdx.grabDA_z;
+        data = photomIdx.grabDA_df;
         timestamps = photomIdx.timestamps;
 
         for e = 1:numel(events)
             eta{r,e} = byl_getETA(events{e},data,timestamps, ...
-                'frequency',130,'normalization','zscore','durations',durations);
+                'sampleRate',130,'normalization','zscore','durations',durations);
             plot(eta{r,e}.window, eta{r,e}.avg, 'color', red(e,:), 'LineWidth', 2,...
                 'DisplayName',sprintf('%s (%i)',events2plot{e},numel(events{e})));
             x1 = [eta{r,e}.window, fliplr(eta{r,e}.window)];
@@ -484,7 +484,7 @@ for r = 1:numel(possibleRegions)
             patch(x1,y,red(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');   
         end
         xlabel('Time from event (s)');
-        ylabel('Fluorescence (z-score)');
+        ylabel('Fluorescence (dF / F_0)');
         title(sprintf('Stimulations'));
         grid on;
         legend('location','best','FontSize',6);
@@ -683,7 +683,7 @@ ylabel('Ripple rate (Hz)');
 f1 = figure(10);
 nexttile(49,[1 4]); cla; hold on;
 if any(contains(fileTable(sesh,:).whichRegions{:},'HPC'))
-    plot(photom_hpc.timestamps, photom_hpc.grabDA_z, ...
+    plot(photom_hpc.timestamps, photom_hpc.grabDA_df, ...
         'color',[0.5 0.5 0.5],'LineWidth',0.5)
     YL = [-10 10];
     plot([photom_hpc.epochs(2,1) photom_hpc.epochs(2,1)],[-10 10], ...
@@ -706,7 +706,7 @@ if any(contains(fileTable(sesh,:).whichRegions{:},'HPC'))
     text(photom_hpc.timestamps(end)+100,-9,'stims','FontSize',6,'Color','[0.3 0.3 0.3]')
     
     xticklabels('')
-    ylabel('Hipp. (z-score)')
+    ylabel('Hipp. (dF / F_0)')
 else
     set(gca, 'Color', 'none'); % Axes background   
     axis off
@@ -722,7 +722,7 @@ end
 f1 = figure(10);
 nexttile(61,[1 4]); cla; hold on;
 if any(contains(fileTable(sesh,:).whichRegions{:},'STR'))
-    plot(photom_str.timestamps, photom_str.grabDA_z, ...
+    plot(photom_str.timestamps, photom_str.grabDA_df, ...
         'color',[0.5 0.5 0.5],'LineWidth',0.5)
     YL = [-10 10];
     plot([photom_str.epochs(2,1) photom_str.epochs(2,1)],[-10 10], ...
@@ -744,7 +744,7 @@ if any(contains(fileTable(sesh,:).whichRegions{:},'STR'))
     text(photom_str.timestamps(end)+100,-7-0.5,'nose pokes','FontSize',6,'Color','r')
     text(photom_str.timestamps(end)+100,-9,'stims','FontSize',6,'Color','[0.3 0.3 0.3]')
     
-    ylabel('Striat. (z-score)')
+    ylabel('Striat. (dF / F_0)')
     xlabel('Time (s)')
 else
     set(gca, 'Color', 'none'); % Axes background   
@@ -775,10 +775,10 @@ if any(contains(fileTable(sesh,:).whichRegions{:},'HPC'))
     events = {ripples.timestamps(rippleBurst.solos & sleep,1),...
               ripples.timestamps(rippleBurst.duos & sleep,1),...
               ripples.timestamps(rippleBurst.trios & sleep,1)};
-    data = photom_hpc.grabDA_z;
+    data = photom_hpc.grabDA_df;
     timestamps = photom_hpc.timestamps;
     for e = 1:numel(events)  
-        etaHPC = byl_getETA(events{e},data,timestamps,'frequency',130,'normalization','none');
+        etaHPC = byl_getETA(events{e},data,timestamps,'sampleRate',130,'normalization','none');
     
         % Plot
         plot(etaHPC.window, etaHPC.avg, 'color', blue(e,:), 'LineWidth', 2,...
@@ -798,7 +798,7 @@ if any(contains(fileTable(sesh,:).whichRegions{:},'HPC'))
           blue(3,:),'EdgeColor','none','HandleVisibility','off');
     
     xlabel('Time from event (s)');
-    ylabel('Fluorescence (z-score');
+    ylabel('Fluorescence (dF / F_0)');
     title(sprintf('Ripple-Triggered Average\nHPC DA (sleep)'));
     grid on;
     legend('location','best');
@@ -824,10 +824,10 @@ if any(contains(fileTable(sesh,:).whichRegions{:},'HPC'))
     events = {ripples.timestamps(rippleBurst.solos & ~sleep,1),...
               ripples.timestamps(rippleBurst.duos & ~sleep,1),...
               ripples.timestamps(rippleBurst.trios & ~sleep,1)};
-    data = photom_hpc.grabDA_z;
+    data = photom_hpc.grabDA_df;
     timestamps = photom_hpc.timestamps;
     for e = 1:numel(events)  
-        etaHPC = byl_getETA(events{e},data,timestamps,'frequency',130);
+        etaHPC = byl_getETA(events{e},data,timestamps,'sampleRate',130);
     
         % Plot
         plot(etaHPC.window, etaHPC.avg, 'color', blue(e,:), 'LineWidth', 2,...
@@ -837,7 +837,7 @@ if any(contains(fileTable(sesh,:).whichRegions{:},'HPC'))
         patch(x1,y,blue(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
     end
     xlabel('Time from event (s)');
-    ylabel('Fluorescence (z-score');
+    ylabel('Fluorescence (dF / F_0');
     title(sprintf('Ripple-Triggered Average\nHPC DA (behavior)'));
     grid on;
     legend('location','best');
@@ -859,10 +859,10 @@ if any(contains(fileTable(sesh,:).whichRegions{:},'HPC')) && ~isempty(stimOnOff)
     events2plot = {'short VTA stim','long VTA stim'};
     events = {photom_hpc.stimpulseOnOff(stimDur < 1,1),...
               photom_hpc.stimpulseOnOff(stimDur > 1,1)};
-    data = photom_hpc.grabDA_z;
+    data = photom_hpc.grabDA_df;
     timestamps = photom_hpc.timestamps;
     for e = 1:numel(events)  
-        etaHPC = byl_getETA(events{e},data,timestamps,'frequency',130);
+        etaHPC = byl_getETA(events{e},data,timestamps,'sampleRate',130);
     
         % Plot
         plot(etaHPC.window, etaHPC.avg, 'color', purple(e,:), 'LineWidth', 2,...
@@ -874,7 +874,7 @@ if any(contains(fileTable(sesh,:).whichRegions{:},'HPC')) && ~isempty(stimOnOff)
         
     end
     xlabel('Time from event (s)');
-    ylabel('Fluorescence (z-score');
+    ylabel('Fluorescence (dF / F_0');
     title(sprintf('Poke/Stim-Triggered Average\nHPC DA (behavior)'));
     grid on;
     legend('location','best');
@@ -904,10 +904,10 @@ if any(contains(fileTable(sesh,:).whichRegions{:},'HPC'))
     events2plot = {'unrewarded','rewarded'};
     events = {behavTrials.timestamps(~logical(behavTrials.reward_outcome)),...
               behavTrials.timestamps(logical(behavTrials.reward_outcome))};
-    data = photom_hpc.grabDA_z;
+    data = photom_hpc.grabDA_df;
     timestamps = photom_hpc.timestamps;
     for e = 1:numel(events)  
-        etaHPC = byl_getETA(events{e},data,timestamps,'frequency',130);
+        etaHPC = byl_getETA(events{e},data,timestamps,'sampleRate',130);
     
         % Plot
         plot(etaHPC.window, etaHPC.avg, 'color', purple(e,:), 'LineWidth', 2,...
@@ -919,7 +919,7 @@ if any(contains(fileTable(sesh,:).whichRegions{:},'HPC'))
         
     end
     xlabel('Time from event (s)');
-    ylabel('Fluorescence (z-score');
+    ylabel('Fluorescence (dF / F_0');
     title(sprintf('Poke/Stim-Triggered Average\nHPC DA (behavior)'));
     grid on;
     legend('location','best');
@@ -944,10 +944,10 @@ if any(contains(fileTable(sesh,:).whichRegions{:},'STR'))
     events = {ripples.timestamps(rippleBurst.solos & sleep,1),...
               ripples.timestamps(rippleBurst.duos & sleep,1),...
               ripples.timestamps(rippleBurst.trios & sleep,1)};
-    data = photom_str.grabDA_z;
+    data = photom_str.grabDA_df;
     timestamps = photom_str.timestamps;
     for e = 1:numel(events)  
-        etaHPC = byl_getETA(events{e},data,timestamps,'frequency',130);
+        etaHPC = byl_getETA(events{e},data,timestamps,'sampleRate',130);
     
         % Plot
         plot(etaHPC.window, etaHPC.avg, 'color', red(e,:), 'LineWidth', 2,...
@@ -958,7 +958,7 @@ if any(contains(fileTable(sesh,:).whichRegions{:},'STR'))
         
     end
     xlabel('Time from event (s)');
-    ylabel('Fluorescence (z-score');
+    ylabel('Fluorescence (dF / F_0');
     title(sprintf('Ripple-Triggered Average\nSTR DA (sleep)'));
     grid on;
     legend('location','best');
@@ -983,10 +983,10 @@ if any(contains(fileTable(sesh,:).whichRegions{:},'STR'))
     events = {ripples.timestamps(rippleBurst.solos & ~sleep,1),...
               ripples.timestamps(rippleBurst.duos & ~sleep,1),...
               ripples.timestamps(rippleBurst.trios & ~sleep,1)};
-    data = photom_str.grabDA_z;
+    data = photom_str.grabDA_df;
     timestamps = photom_str.timestamps;
     for e = 1:numel(events)  
-        etaHPC = byl_getETA(events{e},data,timestamps,'frequency',130);
+        etaHPC = byl_getETA(events{e},data,timestamps,'sampleRate',130);
     
         % Plot
         plot(etaHPC.window, etaHPC.avg, 'color', red(e,:), 'LineWidth', 2,...
@@ -996,7 +996,7 @@ if any(contains(fileTable(sesh,:).whichRegions{:},'STR'))
         patch(x1,y,red(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');
     end
     xlabel('Time from event (s)');
-    ylabel('Fluorescence (z-score');
+    ylabel('Fluorescence (dF / F_0');
     title(sprintf('Ripple-Triggered Average\nSTR DA (behavior)'));
     grid on;
     legend('location','best');
@@ -1018,10 +1018,10 @@ if any(contains(fileTable(sesh,:).whichRegions{:},'STR')) && ~isempty(stimOnOff)
     events2plot = {'short stim','long stim'};
     events = {photom_str.stimpulseOnOff(stimDur < 1,1),...
               photom_str.stimpulseOnOff(stimDur > 1,1)};
-    data = photom_str.grabDA_z;
+    data = photom_str.grabDA_df;
     timestamps = photom_str.timestamps;
     for e = 1:numel(events)  
-        etaSTR = byl_getETA(events{e},data,timestamps,'frequency',130);
+        etaSTR = byl_getETA(events{e},data,timestamps,'sampleRate',130);
     
         % Plot
         plot(etaSTR.window, etaSTR.avg, 'color', orange(e,:), 'LineWidth', 2,...
@@ -1033,7 +1033,7 @@ if any(contains(fileTable(sesh,:).whichRegions{:},'STR')) && ~isempty(stimOnOff)
         
     end
     xlabel('Time from event (s)');
-    ylabel('Fluorescence (z-score');
+    ylabel('Fluorescence (dF / F_0');
     title(sprintf('VTA Stim-Triggered Average\nSTR DA (behavior)'));
     grid on;
     legend('location','northwest');
@@ -1064,10 +1064,10 @@ if any(contains(fileTable(sesh,:).whichRegions{:},'STR'))
     events2plot = {'unrewarded','rewarded'};
     events = {behavTrials.timestamps(~logical(behavTrials.reward_outcome)),...
               behavTrials.timestamps(logical(behavTrials.reward_outcome))};
-    data = photom_str.grabDA_z;
+    data = photom_str.grabDA_df;
     timestamps = photom_str.timestamps;
     for e = 1:numel(events)  
-        etaHPC = byl_getETA(events{e},data,timestamps,'frequency',130);
+        etaHPC = byl_getETA(events{e},data,timestamps,'sampleRate',130);
     
         % Plot
         plot(etaHPC.window, etaHPC.avg, 'color', orange(e,:), 'LineWidth', 2,...
@@ -1079,7 +1079,7 @@ if any(contains(fileTable(sesh,:).whichRegions{:},'STR'))
         
     end
     xlabel('Time from event (s)');
-    ylabel('Fluorescence (z-score');
+    ylabel('Fluorescence (dF / F_0');
     title(sprintf('Poke/Stim-Triggered Average\nSTR DA (behavior)'));
     grid on;
     legend('location','best');
@@ -1109,8 +1109,8 @@ large = ripDurZ > 0 & ripAmpZ > 0;
 nexttile(53); cla; hold on;
 scatter(ripDurZ(~large), ripAmpZ(~large),'.k')
 scatter(ripDurZ(large), ripAmpZ(large),'.b')
-xlabel('Duration (z-score)')
-ylabel('Amplitude (z-score')
+xlabel('Duration (dF / F_0)')
+ylabel('Amplitude (dF / F_0')
 xl = xlim;
 yl = ylim;
 plot(xl,[0 0],'-r','LineWidth',0.5);
@@ -1119,14 +1119,14 @@ plot([0 0],yl,'-r','LineWidth',0.5);
 nexttile(54); cla; hold on;
 scatter(ripDurZ(~large), ripFrqZ(~large),'.k')
 scatter(ripDurZ(large), ripFrqZ(large),'.b')
-xlabel('Duration (z-score)')
-ylabel('Frequency (z-score')
+xlabel('Duration (dF / F_0)')
+ylabel('Frequency (dF / F_0')
 
 nexttile(65); cla; hold on;
 scatter(ripAmpZ(~large), ripFrqZ(~large),'.k')
 scatter(ripAmpZ(large), ripFrqZ(large),'.b')
-xlabel('Amplitude (z-score)')
-ylabel('Frequency (z-score')
+xlabel('Amplitude (dF / F_0)')
+ylabel('Frequency (dF / F_0')
 
 nexttile(66); cla; hold on;
 meanSmall = mean(rippleStats.maps.ripples(~large,:),1);
@@ -1158,10 +1158,10 @@ large = ripDurZ > 0 & ripAmpZ > 0;
 events2plot = {'small','large'};
 events = {ripples.timestamps(~large,1),...
           ripples.timestamps(large,1)};
-data = photom_hpc.grabDA_z;
+data = photom_hpc.grabDA_df;
 timestamps = photom_hpc.timestamps;
 for e = 1:numel(events)  
-    etaHPC = byl_getETA(events{e},data,timestamps,'frequency',130);
+    etaHPC = byl_getETA(events{e},data,timestamps,'sampleRate',130);
 
     % Plot
     plot(etaHPC.window, etaHPC.avg, 'color', green(e,:), 'LineWidth', 2,...
@@ -1181,7 +1181,7 @@ patch([0 largeStats largeStats 0],...
 
 
 xlabel('Time from event (s)');
-ylabel('Fluorescence (z-score)');
+ylabel('Fluorescence (dF / F_0)');
 title(sprintf('Ripple-Triggered Average\nHPC DA (behavior)'));
 grid on;
 % ylim([-0.2 1])
@@ -1205,14 +1205,14 @@ events2plot = {'solos','duos','trios'};
 events = {rippleBurst.soloTimes(:,1),...
           rippleBurst.burstTimes(rippleBurst.burstNum == 2,1),...
           rippleBurst.burstTimes(rippleBurst.burstNum == 3,1)};
-data = photom_hpc.grabDA_z;
+data = photom_hpc.grabDA_df;
 timestamps = photom_hpc.timestamps;
 
 durations = [-5 5];
-eta{1} = byl_getETA(events{1},data,timestamps,'frequency',130,'normalization','zscore','durations',durations);
-eta{2} = byl_getETA(events{2},data,timestamps,'frequency',130,'normalization','zscore','durations',durations);
-eta{3} = byl_getETA(events{3},data,timestamps,'frequency',130,'normalization','zscore','durations',durations);
-eta{4} = byl_getETA(ripples.timestamps(:,1),data,timestamps,'frequency',130,'normalization','zscore','durations',durations);
+eta{1} = byl_getETA(events{1},data,timestamps,'sampleRate',130,'normalization','zscore','durations',durations);
+eta{2} = byl_getETA(events{2},data,timestamps,'sampleRate',130,'normalization','zscore','durations',durations);
+eta{3} = byl_getETA(events{3},data,timestamps,'sampleRate',130,'normalization','zscore','durations',durations);
+eta{4} = byl_getETA(ripples.timestamps(:,1),data,timestamps,'sampleRate',130,'normalization','zscore','durations',durations);
 
 
 numelSolos = sum(rippleBurst.solos);
@@ -1228,7 +1228,7 @@ for e = 1:numel(events)
 end
 
 xlabel('Time from event (s)');
-ylabel('Fluorescence (z-score)');
+ylabel('Fluorescence (dF / F_0)');
 title(sprintf('Ripple-Triggered Average\nHPC DA (whole session)'));
 grid on;
 legend('location','northwest');
@@ -1256,7 +1256,7 @@ YLref = ylim;
 %     patch(x,y,red(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');  
 % end
 % xlabel('Time from event (s)');
-% ylabel('Fluorescence (z-score');
+% ylabel('Fluorescence (dF / F_0');
 % title(sprintf('bootstrap'));
 % grid on;
 % legend('location','northwest');
@@ -1275,8 +1275,8 @@ for e = 1:numel(events)
 end
   
 xlabel('Time from event (s)');
-ylabel('Fluorescence (z-score)');
-title(sprintf('z-score per event'));
+ylabel('Fluorescence (dF / F_0)');
+title(sprintf('dF / F_0 per event'));
 grid on;
 legend('location','northwest');
 set(gca,'children',flipud(get(gca,'children')))
@@ -1301,7 +1301,7 @@ for e = 1:numel(events)
     patch(x1,y,orange(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');  
 end
 xlabel('Time from event (s)');
-ylabel('Fluorescence (z-score)');
+ylabel('Fluorescence (dF / F_0)');
 title(sprintf('random subsample'));
 grid on;
 legend('location','northwest');
@@ -1318,7 +1318,7 @@ for e = 1:numel(events)
     perm = nan(permNum,numel(eta{e}.window));
     for i = 1:permNum
         etaCS = byl_getETA(events{e},circshift(data,randi(numel(data))), ...
-            timestamps,'frequency',130,'normalization','zscore','durations',durations);
+            timestamps,'sampleRate',130,'normalization','zscore','durations',durations);
         perm(i,:) = etaCS.avg;
 
         if mod((((e-1)*permNum)+i),10)==0
@@ -1337,7 +1337,7 @@ for e = 1:numel(events)
     patch(x1,y,yellow(e,:),'FaceAlpha', 0.5,'EdgeColor','none','HandleVisibility','off');  
 end
 xlabel('Time from event (s)');
-ylabel('Fluorescence (z-score)');
+ylabel('Fluorescence (dF / F_0)');
 title(sprintf('circular shift'));
 grid on;
 legend('location','northwest');
@@ -1359,10 +1359,10 @@ large = ripDurZ > 0 & ripAmpZ > 0;
 events2plot = {'small','large'};
 events = {ripples.timestamps(~large,1),...
           ripples.timestamps(large,1)};
-data = photom_hpc.grabDA_z;
+data = photom_hpc.grabDA_df;
 timestamps = photom_hpc.timestamps;
 for e = 1:numel(events)  
-    etaHPC = byl_getETA(events{e},data,timestamps,'frequency',130);
+    etaHPC = byl_getETA(events{e},data,timestamps,'sampleRate',130);
 
     % Plot
     plot(etaHPC.window, etaHPC.avg, 'color', green(e,:), 'LineWidth', 2,...
@@ -1382,7 +1382,7 @@ patch([0 largeStats largeStats 0],...
 
 
 xlabel('Time from event (s)');
-ylabel('Fluorescence (z-score)');
+ylabel('Fluorescence (dF / F_0)');
 title(sprintf('large vs. small ripples'));
 grid on;
 % ylim([-0.2 1])
@@ -1402,12 +1402,12 @@ for q = 1:numel(edges)-1
 end
 
 events2plot = {'Q1','Q2','Q3','Q4','Q5'};
-data = photom_hpc.grabDA_z;
+data = photom_hpc.grabDA_df;
 timestamps = photom_hpc.timestamps;
 
 for e = 1:numel(events2plot)
     events = ripples.timestamps(Q{e},1);
-    etaQ{e} = byl_getETA(events,data,timestamps,'frequency',130, ...
+    etaQ{e} = byl_getETA(events,data,timestamps,'sampleRate',130, ...
         'normalization','zscore','durations',durations);
     plot(etaQ{e}.window, etaQ{e}.avg, 'color', gscol(e,:), 'LineWidth', 2,...
         'DisplayName',events2plot{e});
@@ -1417,7 +1417,7 @@ for e = 1:numel(events2plot)
 end
 
 xlabel('Time from event (s)');
-ylabel('Fluorescence (z-score)');
+ylabel('Fluorescence (dF / F_0)');
 title(sprintf('quintiles'));
 grid on;
 legend('location','northwest');
@@ -1439,12 +1439,12 @@ ylim(YLref);
 % end
 % 
 % events2plot = {'Q1','Q2','Q3','Q4','Q5'};
-% data = photom_hpc.grabDA_z;
+% data = photom_hpc.grabDA_df;
 % timestamps = photom_hpc.timestamps;
 % 
 % for e = 1:numel(events2plot)
 %     events = allSWR(Q{e},1);
-%     etaQ{e} = byl_getETA(events,data,timestamps,'frequency',130, ...
+%     etaQ{e} = byl_getETA(events,data,timestamps,'sampleRate',130, ...
 %         'normalization','zscore','durations',durations);
 %     plot(etaQ{e}.window, etaQ{e}.avg, 'color', gscol(e,:), 'LineWidth', 2,...
 %         'DisplayName',events2plot{e});
@@ -1454,7 +1454,7 @@ ylim(YLref);
 % end
 % 
 % xlabel('Time from event (s)');
-% ylabel('Fluorescence (z-score)');
+% ylabel('Fluorescence (dF / F_0)');
 % title(sprintf('quintiles'));
 % grid on;
 % legend('location','northwest');
@@ -1581,7 +1581,7 @@ xlim([0 7])
 title('change in average DA')
 xticks(1:6)
 xticklabels({'before','after','before','after','before','after'})
-ylabel('z-score (rel. before)')
+ylabel('dF / F_0 (rel. before)')
 
 
 % --- DA 0 to max
@@ -1607,8 +1607,8 @@ ylabel('change in DA')
 nexttile(37); cla; hold on;
 scatter(ripDurZ(~large), ripAmpZ(~large),'.k')
 scatter(ripDurZ(large), ripAmpZ(large),'.b')
-xlabel('Duration (z-score)')
-ylabel('Amplitude (z-score')
+xlabel('Duration (dF / F_0)')
+ylabel('Amplitude (dF / F_0')
 xl = xlim;
 yl = ylim;
 plot(xl,[0 0],'-r','LineWidth',0.5);
